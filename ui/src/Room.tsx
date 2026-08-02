@@ -77,6 +77,7 @@ export const Room = ({
     const [hoverControl, setHoverControl] = React.useState(false);
     const [selectedStream, setSelectedStream] = React.useState<string | typeof HostStream>();
     const [videoElement, setVideoElement] = React.useState<FullScreenHTMLVideoElement | null>(null);
+    const [audioBlocked, setAudioBlocked] = React.useState(false);
 
     useShowOnMouseMovement(setShowControl);
 
@@ -106,19 +107,38 @@ export const Room = ({
     React.useEffect(() => {
         if (videoElement && stream && !isHostSelfStream) {
             videoElement.srcObject = stream;
-            videoElement.play().catch((err) => {
-                console.log('Could not play main video', err);
-                if (err.name === 'NotAllowedError') {
-                    videoElement.muted = true;
-                    videoElement
-                        .play()
-                        .catch((retryErr) =>
-                            console.log('Could not play main video with mute', retryErr)
-                        );
-                }
-            });
+            videoElement.muted = false;
+            videoElement
+                .play()
+                .then(() => setAudioBlocked(false))
+                .catch((err) => {
+                    console.log('Could not play main video', err);
+                    if (err.name === 'NotAllowedError') {
+                        videoElement.muted = true;
+                        videoElement
+                            .play()
+                            .then(() => {
+                                if ((stream.getAudioTracks().length ?? 0) > 0) {
+                                    setAudioBlocked(true);
+                                }
+                            })
+                            .catch((retryErr) =>
+                                console.log('Could not play main video with mute', retryErr)
+                            );
+                    }
+                });
         }
     }, [videoElement, stream, isHostSelfStream]);
+
+    const enableAudio = () => {
+        if (videoElement) {
+            videoElement.muted = false;
+            videoElement
+                .play()
+                .then(() => setAudioBlocked(false))
+                .catch((err) => console.log('Failed to unmute video', err));
+        }
+    };
 
     const copyLink = () => {
         navigator?.clipboard?.writeText(window.location.href)?.then(
@@ -194,6 +214,9 @@ export const Room = ({
         () => {
             if (videoElement) {
                 videoElement.muted = !videoElement.muted;
+                if (!videoElement.muted) {
+                    setAudioBlocked(false);
+                }
             }
         },
         [videoElement]
@@ -261,11 +284,40 @@ export const Room = ({
                 </Paper>
             )}
 
+            {audioBlocked && !isHostSelfStream && (
+                <Paper
+                    elevation={10}
+                    style={{
+                        position: 'fixed',
+                        top: '90px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 40,
+                        backgroundColor: '#fabd2f',
+                        color: '#282828',
+                        padding: '10px 20px',
+                        cursor: 'pointer',
+                        borderRadius: '8px',
+                        fontWeight: 'bold',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                    }}
+                    onClick={enableAudio}
+                >
+                    <VolumeIcon />
+                    <Typography variant="body1" style={{fontWeight: 'bold', color: '#282828'}}>
+                        Tap here to enable sound
+                    </Typography>
+                </Paper>
+            )}
+
             {stream && !isHostSelfStream ? (
                 <video
                     ref={setVideoElement}
                     className={videoClasses()}
                     onDoubleClick={handleFullscreen}
+                    playsInline
                 />
             ) : isHostSelfStream ? (
                 <Typography
@@ -300,7 +352,7 @@ export const Room = ({
             {controlVisible && (
                 <Paper className={classes.control} elevation={10} {...setHoverState}>
                     {(stream?.getAudioTracks().length ?? 0) > 0 && videoElement && !isHostSelfStream && (
-                        <AudioControl video={videoElement} />
+                        <AudioControl video={videoElement} onUnmute={() => setAudioBlocked(false)} />
                     )}
                     <Box sx={{whiteSpace: 'nowrap'}}>
                         {state.hostStream ? (
@@ -434,7 +486,13 @@ const useShowOnMouseMovement = (doShow: (s: boolean) => void) => {
     );
 };
 
-const AudioControl = ({video}: {video: FullScreenHTMLVideoElement}) => {
+const AudioControl = ({
+    video,
+    onUnmute,
+}: {
+    video: FullScreenHTMLVideoElement;
+    onUnmute?: () => void;
+}) => {
     // this is used to force a rerender
     const [, setMuted] = React.useState<boolean>();
 
@@ -447,7 +505,15 @@ const AudioControl = ({video}: {video: FullScreenHTMLVideoElement}) => {
 
     return (
         <Stack spacing={0.5} direction="row" sx={{alignItems: 'center', my: 1, height: 35, pr: 2}}>
-            <IconButton size="large" onClick={() => (video.muted = !video.muted)}>
+            <IconButton
+                size="large"
+                onClick={() => {
+                    video.muted = !video.muted;
+                    if (!video.muted && onUnmute) {
+                        onUnmute();
+                    }
+                }}
+            >
                 {video.muted ? (
                     <VolumeMuteIcon fontSize="large" />
                 ) : (
@@ -461,7 +527,10 @@ const AudioControl = ({video}: {video: FullScreenHTMLVideoElement}) => {
                 defaultValue={video.volume}
                 onChange={(_, newVolume) => {
                     video.muted = false;
-                    video.volume = newVolume;
+                    video.volume = Array.isArray(newVolume) ? newVolume[0] : newVolume;
+                    if (onUnmute) {
+                        onUnmute();
+                    }
                 }}
             />
         </Stack>

@@ -10,5 +10,5 @@ export const Video = ({src, className}: {src: MediaStream; className?: string}) 
         }
     }, [element, src]);
 
-    return <video muted ref={setElement} className={className} />;
+    return <video muted playsInline ref={setElement} className={className} />;
 };
