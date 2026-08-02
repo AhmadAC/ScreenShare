@@ -3,13 +3,40 @@
 # Navigate to the server directory
 cd /home/test/Documents/server || exit
 
-echo "----------------------------------------"
-echo "Rebuilding React Frontend with Deno..."
-echo "----------------------------------------"
-cd ui
-deno install
-deno task build
-cd ..
+# =======================================================
+# TOGGLE BUILD OPTION
+# Change BUILD_UI="false" to BUILD_UI="true" to build by default.
+# Or pass flags when running the script:
+#   ./start.sh --build
+#   ./start.sh --no-build
+# =======================================================
+BUILD_UI="${BUILD_UI:-false}"
+
+# Check for command line flags
+for arg in "$@"; do
+    case $arg in
+        --build|-b|build)
+            BUILD_UI=true
+            ;;
+        --no-build|-nb|nobuild)
+            BUILD_UI=false
+            ;;
+    esac
+done
+
+if [ "$BUILD_UI" = "true" ]; then
+    echo "----------------------------------------"
+    echo "Rebuilding React Frontend with Deno..."
+    echo "----------------------------------------"
+    cd ui || exit
+    deno install
+    deno task build
+    cd ..
+else
+    echo "----------------------------------------"
+    echo "Skipping React Frontend build (BUILD_UI=false)"
+    echo "----------------------------------------"
+fi
 
 # 1. Forcefully kill ONLY the processes holding our specific ports (completely safe for VS Code)
 fuser -k 5050/tcp 2>/dev/null
@@ -58,5 +85,5 @@ SUBSHELL_PID=$!
 # Ensure python helper closes if shell is closed
 trap "kill $SUBSHELL_PID 2>/dev/null; pkill -f control_server.py 2>/dev/null" EXIT
 
-# 6. Start the server (blocking command)
-go run main.go serve
+# 6. Start the server (blocking command) - 'go run .' runs the package in the current directory
+go run . serve

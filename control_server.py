@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingTCPServer
 
@@ -82,8 +83,31 @@ def run_http_server():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
     server.serve_forever()
 
+def rehide_browser_window():
+    """Aggressively moves and lowers the browser window off-screen if KDE tries to bring it to focus."""
+    for _ in range(15):  # Check every 200ms for 3 seconds
+        try:
+            # Move window off-screen to 9999,9999
+            subprocess.run(
+                ["xdotool", "search", "--name", "Screego", "windowmove", "9999", "9999"],
+                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
+            )
+            # Force window to stay below all windows and hide from taskbar
+            subprocess.run(
+                ["wmctrl", "-r", "Screego", "-b", "add,below,skip_taskbar,skip_pager"],
+                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
+            )
+            # Minimize window
+            subprocess.run(
+                ["xdotool", "search", "--name", "Screego", "windowminimize"],
+                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
+            )
+        except Exception:
+            pass
+        time.sleep(0.2)
+
 def launch_hidden_browser(url):
-    """Finds Edge or Chrome and launches it completely hidden/minimized in the background."""
+    """Finds Edge or Chrome and launches it completely hidden off-screen in the background."""
     browsers = [
         "microsoft-edge-stable",
         "microsoft-edge",
@@ -115,9 +139,8 @@ def launch_hidden_browser(url):
         "--enable-gpu-rasterization",
         "--enable-zero-copy",
         "--autoplay-policy=no-user-gesture-required",
-        "--window-position=-32000,-32000",
-        "--window-size=1,1",
-        "--minimized",
+        "--window-position=9999,9999",  # Position off-screen
+        "--window-size=200,200",
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-logging",
@@ -129,17 +152,8 @@ def launch_hidden_browser(url):
     print(f"Launching Background Streaming Engine...")
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
-    # Helper thread to immediately minimize and hide the window on Linux via xdotool / wmctrl
-    def auto_hide():
-        import time
-        time.sleep(1.0)
-        try:
-            subprocess.run(["xdotool", "search", "--name", "Screego", "windowminimize"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            subprocess.run(["wmctrl", "-r", "Screego", "-b", "add,hidden,shaded,below"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        except Exception:
-            pass
-
-    threading.Thread(target=auto_hide, daemon=True).start()
+    # Run initial re-hide thread to ensure it starts off-screen
+    threading.Thread(target=rehide_browser_window, daemon=True).start()
     return proc
 
 
@@ -238,6 +252,8 @@ class OverlayToolbar(QWidget):
             pending_action = "stop_share"
         else:
             pending_action = "start_share"
+            # Trigger active window re-hiding so Edge doesn't un-minimize onto the desktop
+            threading.Thread(target=rehide_browser_window, daemon=True).start()
 
     def trigger_pause(self):
         global pending_action
