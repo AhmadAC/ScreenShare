@@ -101,8 +101,10 @@ export const Room = ({
             ? state.hostStream
             : state.clientStreams.find(({id}) => selectedStream === id)?.stream;
 
+    const isHostSelfStream = selectedStream === HostStream || (!!state.hostStream && stream === state.hostStream);
+
     React.useEffect(() => {
-        if (videoElement && stream) {
+        if (videoElement && stream && !isHostSelfStream) {
             videoElement.srcObject = stream;
             videoElement.play().catch((err) => {
                 console.log('Could not play main video', err);
@@ -116,7 +118,7 @@ export const Room = ({
                 }
             });
         }
-    }, [videoElement, stream]);
+    }, [videoElement, stream, isHostSelfStream]);
 
     const copyLink = () => {
         navigator?.clipboard?.writeText(window.location.href)?.then(
@@ -259,12 +261,26 @@ export const Room = ({
                 </Paper>
             )}
 
-            {stream ? (
+            {stream && !isHostSelfStream ? (
                 <video
                     ref={setVideoElement}
                     className={videoClasses()}
                     onDoubleClick={handleFullscreen}
                 />
+            ) : isHostSelfStream ? (
+                <Typography
+                    variant="h4"
+                    align="center"
+                    component="div"
+                    style={{
+                        top: '50%',
+                        left: '50%',
+                        position: 'absolute',
+                        transform: 'translate(-50%, -50%)',
+                    }}
+                >
+                    You are sharing your screen
+                </Typography>
             ) : (
                 <Typography
                     variant="h4"
@@ -283,7 +299,7 @@ export const Room = ({
 
             {controlVisible && (
                 <Paper className={classes.control} elevation={10} {...setHoverState}>
-                    {(stream?.getAudioTracks().length ?? 0) > 0 && videoElement && (
+                    {(stream?.getAudioTracks().length ?? 0) > 0 && videoElement && !isHostSelfStream && (
                         <AudioControl video={videoElement} />
                     )}
                     <Box sx={{whiteSpace: 'nowrap'}}>
@@ -333,7 +349,7 @@ export const Room = ({
                         <Tooltip title="Fullscreen" arrow>
                             <IconButton
                                 onClick={() => handleFullscreen()}
-                                disabled={!selectedStream}
+                                disabled={!selectedStream || isHostSelfStream}
                                 size="large"
                             >
                                 <FullScreenIcon fontSize="large" />
@@ -377,23 +393,6 @@ export const Room = ({
                             </Paper>
                         );
                     })}
-                {state.hostStream && selectedStream !== HostStream && (
-                    <Paper
-                        elevation={4}
-                        className={classes.smallVideoContainer}
-                        onClick={() => setSelectedStream(HostStream)}
-                    >
-                        <Video src={state.hostStream} className={classes.smallVideo} />
-                        <Typography
-                            variant="subtitle1"
-                            component="div"
-                            align="center"
-                            className={classes.smallVideoLabel}
-                        >
-                            You
-                        </Typography>
-                    </Paper>
-                )}
                 <SettingDialog
                     open={open}
                     setOpen={setOpen}

@@ -41,7 +41,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, *')
         self.end_headers()
 
     def do_GET(self):
@@ -82,8 +82,8 @@ def run_http_server():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
     server.serve_forever()
 
-def launch_browser_app(url):
-    """Finds Edge or Chrome and launches it in App Mode with Fedora Wayland PipeWire flags."""
+def launch_hidden_browser(url):
+    """Finds Edge or Chrome and launches it completely hidden/minimized in the background."""
     browsers = [
         "microsoft-edge-stable",
         "microsoft-edge",
@@ -110,12 +110,37 @@ def launch_browser_app(url):
         "--use-fake-ui-for-media-stream",
         "--auto-select-desktop-capture-source=Entire screen",
         "--enable-usermedia-screen-capturing",
-        "--enable-features=WebRTCPipeWireCapturer",
-        "--autoplay-policy=no-user-gesture-required"
+        "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization",
+        "--ignore-gpu-blocklist",
+        "--enable-gpu-rasterization",
+        "--enable-zero-copy",
+        "--autoplay-policy=no-user-gesture-required",
+        "--window-position=-32000,-32000",
+        "--window-size=1,1",
+        "--minimized",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-logging",
+        "--log-level=3",
+        "--disable-breakpad",
+        "--disable-component-update"
     ]
     
-    print(f"Launching App Window: {' '.join(cmd)}")
-    return subprocess.Popen(cmd)
+    print(f"Launching Background Streaming Engine...")
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    # Helper thread to immediately minimize and hide the window on Linux via xdotool / wmctrl
+    def auto_hide():
+        import time
+        time.sleep(1.0)
+        try:
+            subprocess.run(["xdotool", "search", "--name", "Screego", "windowminimize"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            subprocess.run(["wmctrl", "-r", "Screego", "-b", "add,hidden,shaded,below"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        except Exception:
+            pass
+
+    threading.Thread(target=auto_hide, daemon=True).start()
+    return proc
 
 
 # PySide6 Overlay Window
@@ -253,18 +278,24 @@ if __name__ == '__main__':
     http_thread = threading.Thread(target=run_http_server, daemon=True)
     http_thread.start()
 
-    # Launch Edge/Chrome in App Mode
-    browser_proc = launch_browser_app(SCREEGO_URL)
+    # Launch browser engine in the background (hidden)
+    browser_proc = launch_hidden_browser(SCREEGO_URL)
 
     app = QApplication(sys.argv)
     
-    # Initialize Overlay Toolbar
+    # Initialize PySide6 Overlay Toolbar
     toolbar = OverlayToolbar()
     toolbar.show()
     
-    ret = app.exec()
+    # Clean up browser process on exit
+    def cleanup():
+        if browser_proc:
+            browser_proc.terminate()
+            try:
+                browser_proc.wait(timeout=2)
+            except Exception:
+                browser_proc.kill()
 
-    if browser_proc:
-        browser_proc.terminate()
+    app.aboutToQuit.connect(cleanup)
 
-    sys.exit(ret)
+    sys.exit(app.exec())
