@@ -11,7 +11,7 @@ cd /home/test/Documents/server || exit
 #   ./start.sh --build
 #   ./start.sh --no-build
 # =======================================================
-BUILD_UI="${BUILD_UI:-true}"
+BUILD_UI="${BUILD_UI:-false}"
 
 # Check for command line flags
 for arg in "$@"; do

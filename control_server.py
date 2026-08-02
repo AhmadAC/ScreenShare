@@ -13,7 +13,7 @@ from socketserver import ThreadingTCPServer
 from PySide6.QtCore import Qt, QObject, Signal
 from PySide6.QtWidgets import (
     QApplication, QWidget, QHBoxLayout, QPushButton, QLabel, 
-    QGraphicsDropShadowEffect
+    QGraphicsDropShadowEffect, QSizePolicy
 )
 from PySide6.QtGui import QColor
 
@@ -87,17 +87,14 @@ def rehide_browser_window():
     """Aggressively moves and lowers the browser window off-screen if KDE tries to bring it to focus."""
     for _ in range(15):  # Check every 200ms for 3 seconds
         try:
-            # Move window off-screen to 9999,9999
             subprocess.run(
                 ["xdotool", "search", "--name", "Screego", "windowmove", "9999", "9999"],
                 stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
             )
-            # Force window to stay below all windows and hide from taskbar
             subprocess.run(
                 ["wmctrl", "-r", "Screego", "-b", "add,below,skip_taskbar,skip_pager"],
                 stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
             )
-            # Minimize window
             subprocess.run(
                 ["xdotool", "search", "--name", "Screego", "windowminimize"],
                 stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
@@ -109,12 +106,9 @@ def rehide_browser_window():
 def launch_hidden_browser(url):
     """Finds Edge or Chrome and launches it completely hidden off-screen in the background."""
     browsers = [
-        "microsoft-edge-stable",
-        "microsoft-edge",
-        "google-chrome-stable",
-        "google-chrome",
-        "chromium-browser",
-        "chromium"
+        "microsoft-edge-stable", "microsoft-edge",
+        "google-chrome-stable", "google-chrome",
+        "chromium-browser", "chromium"
     ]
     
     executable = None
@@ -139,7 +133,7 @@ def launch_hidden_browser(url):
         "--enable-gpu-rasterization",
         "--enable-zero-copy",
         "--autoplay-policy=no-user-gesture-required",
-        "--window-position=9999,9999",  # Position off-screen
+        "--window-position=9999,9999",
         "--window-size=200,200",
         "--no-first-run",
         "--no-default-browser-check",
@@ -151,8 +145,6 @@ def launch_hidden_browser(url):
     
     print(f"Launching Background Streaming Engine...")
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    
-    # Run initial re-hide thread to ensure it starts off-screen
     threading.Thread(target=rehide_browser_window, daemon=True).start()
     return proc
 
@@ -161,6 +153,7 @@ def launch_hidden_browser(url):
 class OverlayToolbar(QWidget):
     def __init__(self):
         super().__init__()
+        self.audio_muted = False
         self.init_ui()
 
     def init_ui(self):
@@ -172,8 +165,8 @@ class OverlayToolbar(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         layout = QHBoxLayout()
-        layout.setContentsMargins(10, 5, 10, 5)
-        layout.setSpacing(8)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSizeConstraint(QHBoxLayout.SizeConstraint.SetFixedSize)
 
         self.container = QWidget(self)
         self.container.setObjectName("Container")
@@ -181,15 +174,15 @@ class OverlayToolbar(QWidget):
             QWidget#Container {
                 background-color: rgba(40, 40, 40, 220);
                 border: 1px solid #458588;
-                border-radius: 18px;
+                border-radius: 12px;
             }
             QPushButton {
                 background-color: #3c3836;
                 color: #fbf1c7;
                 border: none;
-                border-radius: 12px;
-                padding: 6px 14px;
-                font-size: 12px;
+                border-radius: 8px;
+                padding: 4px 10px;
+                font-size: 11px;
                 font-weight: bold;
                 font-family: sans-serif;
             }
@@ -203,17 +196,24 @@ class OverlayToolbar(QWidget):
                 background-color: #1d2021;
                 color: #928374;
             }
+            QPushButton#ExitBtn:hover {
+                background-color: #cc241d;
+                color: white;
+            }
+            QPushButton#ExitBtn:pressed {
+                background-color: #9d0006;
+            }
             QLabel {
                 color: #a89984;
                 font-family: sans-serif;
-                font-size: 13px;
+                font-size: 11px;
                 font-weight: bold;
             }
         """)
 
         container_layout = QHBoxLayout(self.container)
-        container_layout.setContentsMargins(8, 4, 8, 4)
-        container_layout.setSpacing(6)
+        container_layout.setContentsMargins(6, 4, 6, 4)
+        container_layout.setSpacing(4)
 
         self.grip = QLabel(" ⠿ ", self.container)
         self.grip.setCursor(Qt.CursorShape.OpenHandCursor)
@@ -228,22 +228,30 @@ class OverlayToolbar(QWidget):
         self.btn_pause.setEnabled(False)
         container_layout.addWidget(self.btn_pause)
 
-        self.indicator = QLabel("● Ready", self.container)
+        self.btn_mute = QPushButton("Mute", self.container)
+        self.btn_mute.clicked.connect(self.toggle_mute)
+        container_layout.addWidget(self.btn_mute)
+
+        self.indicator = QLabel("●", self.container)
         self.indicator.setStyleSheet("color: #b8bb26;")
         container_layout.addWidget(self.indicator)
+        
+        # Add Exit Button to clean up and quit
+        self.btn_exit = QPushButton("Exit", self.container)
+        self.btn_exit.setObjectName("ExitBtn")
+        self.btn_exit.clicked.connect(QApplication.instance().quit)
+        container_layout.addWidget(self.btn_exit)
 
         layout.addWidget(self.container)
         self.setLayout(layout)
 
         shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(15)
+        shadow.setBlurRadius(10)
         shadow.setColor(QColor(0, 0, 0, 150))
-        shadow.setOffset(0, 4)
+        shadow.setOffset(0, 3)
         self.container.setGraphicsEffect(shadow)
 
         comm.state_updated.connect(self.update_gui_state)
-
-        self.resize(320, 50)
         self.move(20, 80)
 
     def toggle_share(self):
@@ -252,12 +260,22 @@ class OverlayToolbar(QWidget):
             pending_action = "stop_share"
         else:
             pending_action = "start_share"
-            # Trigger active window re-hiding so Edge doesn't un-minimize onto the desktop
             threading.Thread(target=rehide_browser_window, daemon=True).start()
 
     def trigger_pause(self):
         global pending_action
         pending_action = "toggle_pause"
+
+    def toggle_mute(self):
+        self.audio_muted = not self.audio_muted
+        if self.audio_muted:
+            self.btn_mute.setText("Unmute")
+            self.btn_mute.setStyleSheet("background-color: #cc241d; color: white;")
+            subprocess.run(["pactl", "set-source-mute", "VirtualMic", "1"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        else:
+            self.btn_mute.setText("Mute")
+            self.btn_mute.setStyleSheet("")
+            subprocess.run(["pactl", "set-source-mute", "VirtualMic", "0"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
     def update_gui_state(self, state):
         if state["sharing"]:
@@ -267,21 +285,18 @@ class OverlayToolbar(QWidget):
             if state["paused"]:
                 self.btn_pause.setText("Resume")
                 self.btn_pause.setStyleSheet("background-color: #fabd2f; color: black;")
-                self.indicator.setText("● Paused")
-                self.indicator.setStyleSheet("color: #fabd2f;")
+                self.indicator.setStyleSheet("color: #fabd2f;") # Yellow indicator
             else:
                 self.btn_pause.setText("Pause")
                 self.btn_pause.setStyleSheet("")
-                self.indicator.setText("● Live")
-                self.indicator.setStyleSheet("color: #fe8019;")
+                self.indicator.setStyleSheet("color: #fe8019;") # Orange indicator
         else:
             self.btn_share.setText("Share")
             self.btn_share.setStyleSheet("")
             self.btn_pause.setText("Pause")
             self.btn_pause.setStyleSheet("")
             self.btn_pause.setEnabled(False)
-            self.indicator.setText("● Ready")
-            self.indicator.setStyleSheet("color: #b8bb26;")
+            self.indicator.setStyleSheet("color: #b8bb26;") # Green indicator
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -294,24 +309,31 @@ if __name__ == '__main__':
     http_thread = threading.Thread(target=run_http_server, daemon=True)
     http_thread.start()
 
-    # Launch browser engine in the background (hidden)
     browser_proc = launch_hidden_browser(SCREEGO_URL)
 
     app = QApplication(sys.argv)
     
-    # Initialize PySide6 Overlay Toolbar
     toolbar = OverlayToolbar()
     toolbar.show()
     
-    # Clean up browser process on exit
     def cleanup():
+        # 1. Kill hidden browser stream
         if browser_proc:
             browser_proc.terminate()
             try:
                 browser_proc.wait(timeout=2)
             except Exception:
                 browser_proc.kill()
+                
+        # 2. Delete Virtual Microphone from Linux PulseAudio/PipeWire
+        subprocess.run(["pactl", "unload-module", "module-remap-source"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        
+        # 3. Kill the Go server running in start.sh
+        subprocess.run(["pkill", "-f", "go run . serve"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        subprocess.run(["pkill", "-f", "screego"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        
+        # 4. Kill the bash script itself
+        subprocess.run(["pkill", "-f", "start.sh"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
     app.aboutToQuit.connect(cleanup)
-
     sys.exit(app.exec())

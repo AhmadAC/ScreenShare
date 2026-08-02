@@ -10,6 +10,7 @@ import VolumeIcon from '@mui/icons-material/VolumeUp';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PausePresentationIcon from '@mui/icons-material/PausePresentation';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ScreenRotationIcon from '@mui/icons-material/ScreenRotation';
 import {useHotkeys} from 'react-hotkeys-hook';
 import {Video} from './Video';
 import {makeStyles} from 'tss-react/mui';
@@ -398,6 +399,7 @@ export const Room = ({
                                 <PeopleIcon fontSize="large" />
                             </Badge>
                         </Tooltip>
+                        
                         <Tooltip title="Fullscreen" arrow>
                             <IconButton
                                 onClick={() => handleFullscreen()}
@@ -405,6 +407,47 @@ export const Room = ({
                                 size="large"
                             >
                                 <FullScreenIcon fontSize="large" />
+                            </IconButton>
+                        </Tooltip>
+
+                        <Tooltip title="Force Landscape Fullscreen" arrow>
+                            <IconButton
+                                onClick={async () => {
+                                    try {
+                                        const isFullscreen = document.fullscreenElement || (document as any).webkitFullscreenElement || (document as any).mozFullScreenElement;
+                                        
+                                        if (!isFullscreen) {
+                                            if (videoElement?.requestFullscreen) {
+                                                await videoElement.requestFullscreen();
+                                            } else if ((videoElement as any)?.webkitEnterFullscreen) {
+                                                (videoElement as any).webkitEnterFullscreen();
+                                            } else if ((videoElement as any)?.mozRequestFullScreen) {
+                                                (videoElement as any).mozRequestFullScreen();
+                                            }
+                                            
+                                            if (window.screen?.orientation?.lock) {
+                                                await window.screen.orientation.lock('landscape').catch(e => console.log('Orientation lock unsupported:', e));
+                                            }
+                                        } else {
+                                            if (window.screen?.orientation?.unlock) {
+                                                window.screen.orientation.unlock();
+                                            }
+                                            if (document.exitFullscreen) {
+                                                await document.exitFullscreen();
+                                            } else if ((document as any).webkitExitFullscreen) {
+                                                (document as any).webkitExitFullscreen();
+                                            } else if ((document as any).mozCancelFullScreen) {
+                                                (document as any).mozCancelFullScreen();
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.warn('Rotation/Fullscreen error:', e);
+                                    }
+                                }}
+                                disabled={!selectedStream || isHostSelfStream}
+                                size="large"
+                            >
+                                <ScreenRotationIcon fontSize="large" />
                             </IconButton>
                         </Tooltip>
 
