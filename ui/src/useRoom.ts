@@ -1,3 +1,4 @@
+// server/ui/src/useRoom.ts
 import {useSnackbar} from 'notistack';
 import React from 'react';
 
@@ -20,6 +21,7 @@ export type ConnectedRoom = {
     ws: WebSocket;
     hostStream?: MediaStream;
     clientStreams: ClientStream[];
+    paused?: boolean;
 } & RoomInfo;
 
 interface ClientStream {
@@ -34,6 +36,7 @@ export interface UseRoom {
     share: () => void;
     setName: (name: string) => void;
     stopShare: () => void;
+    togglePause: () => void;
 }
 
 const relayConfig: Partial<RTCConfiguration> =
@@ -166,6 +169,11 @@ export const useRoom = (config: UIConfig): UseRoom => {
     const host = React.useRef<Record<string, RTCPeerConnection>>({});
     const client = React.useRef<Record<string, RTCPeerConnection>>({});
     const stream = React.useRef<MediaStream>(undefined);
+    const pauseDataRef = React.useRef<{
+        isPaused?: boolean;
+        intervalId?: number;
+        frozenStream?: MediaStream;
+    }>({});
 
     const [state, setState] = React.useState<RoomState>(false);
 
@@ -205,9 +213,22 @@ export const useRoom = (config: UIConfig): UseRoom => {
                             if (!stream.current) {
                                 return;
                             }
+
+                            // Deliver frozen video framework to new attendees if paused
+                            const activeStream = new MediaStream();
+                            stream.current.getAudioTracks().forEach((t) => activeStream.addTrack(t));
+                            
+                            if (pauseDataRef.current.isPaused && pauseDataRef.current.frozenStream) {
+                                const frozenVid = pauseDataRef.current.frozenStream.getVideoTracks()[0];
+                                if (frozenVid) activeStream.addTrack(frozenVid);
+                            } else {
+                                const origVid = stream.current.getVideoTracks()[0];
+                                if (origVid) activeStream.addTrack(origVid);
+                            }
+
                             hostSession({
                                 sid: event.payload.id,
-                                stream: stream.current!,
+                                stream: activeStream,
                                 ice: event.payload.iceServers,
                                 send,
                                 done: () => delete host.current[event.payload.id],
@@ -234,7 +255,7 @@ export const useRoom = (config: UIConfig): UseRoom => {
                                             : current
                                     );
                                 },
-                                onTrack: (stream) =>
+                                onTrack: (inStream) =>
                                     setState((current) =>
                                         current
                                             ? {
@@ -243,14 +264,14 @@ export const useRoom = (config: UIConfig): UseRoom => {
                                                       ...current.clientStreams,
                                                       {
                                                           id: sid,
-                                                          stream,
+                                                          stream: inStream,
                                                           peer_id: peer,
                                                       },
                                                   ],
                                               }
                                             : current
                                     ),
-                            }).then((peer) => (client.current[event.payload.id] = peer));
+                            }).then((newPeer) => (client.current[event.payload.id] = newPeer));
                             return;
                         case 'clientice':
                             host.current[event.payload.sid]?.addIceCandidate(event.payload.value);
@@ -341,7 +362,6 @@ export const useRoom = (config: UIConfig): UseRoom => {
                     echoCancellation: false,
                     autoGainControl: false,
                     noiseSuppression: false,
-                    // https://medium.com/@trystonperry/why-is-getdisplaymedias-audio-quality-so-bad-b49ba9cfaa83
                     // @ts-expect-error
                     googAutoGainControl: false,
                 },
@@ -356,12 +376,20 @@ export const useRoom = (config: UIConfig): UseRoom => {
         }
 
         stream.current?.getVideoTracks()[0].addEventListener('ended', () => stopShare());
-        setState((current) => (current ? {...current, hostStream: stream.current} : current));
+        setState((current) => (current ? {...current, hostStream: stream.current, paused: false} : current));
 
         conn.current?.send(JSON.stringify({type: 'share', payload: {}}));
     };
 
     const stopShare = async () => {
+        if (pauseDataRef.current.intervalId) {
+            window.clearInterval(pauseDataRef.current.intervalId);
+        }
+        pauseDataRef.current.frozenStream?.getTracks().forEach((t) => {
+            if (t.kind === 'video') t.stop();
+        });
+        pauseDataRef.current = {};
+
         Object.values(host.current).forEach((peer) => {
             peer.close();
         });
@@ -369,7 +397,94 @@ export const useRoom = (config: UIConfig): UseRoom => {
         stream.current?.getTracks().forEach((track) => track.stop());
         stream.current = undefined;
         conn.current?.send(JSON.stringify({type: 'stopshare', payload: {}}));
-        setState((current) => (current ? {...current, hostStream: undefined} : current));
+        setState((current) => (current ? {...current, hostStream: undefined, paused: false} : current));
+    };
+
+    const togglePause = async () => {
+        if (!stream.current || stream.current.getVideoTracks().length === 0) return;
+        
+        const isCurrentlyPaused = pauseDataRef.current.isPaused || false;
+        
+        if (isCurrentlyPaused) {
+            if (pauseDataRef.current.intervalId) {
+                window.clearInterval(pauseDataRef.current.intervalId);
+                pauseDataRef.current.intervalId = undefined;
+            }
+            pauseDataRef.current.frozenStream?.getTracks().forEach((t) => {
+                if (t.kind === 'video') t.stop();
+            });
+            pauseDataRef.current.frozenStream = undefined;
+            pauseDataRef.current.isPaused = false;
+            
+            const originalVideoTrack = stream.current.getVideoTracks()[0];
+            originalVideoTrack.enabled = true;
+            
+            Object.values(host.current).forEach((peer) => {
+                const sender = peer.getSenders().find((s) => s.track?.kind === 'video');
+                if (sender) {
+                    sender.replaceTrack(originalVideoTrack).catch(console.error);
+                }
+            });
+            
+            setState((current) => (current ? {...current, paused: false} : current));
+        } else {
+            pauseDataRef.current.isPaused = true;
+            setState((current) => (current ? {...current, paused: true} : current));
+            
+            const video = document.createElement('video');
+            video.style.display = 'none';
+            document.body.appendChild(video); // Force render in active DOM so Chromium decodes frames
+            video.srcObject = stream.current;
+            video.muted = true;
+            video.playsInline = true;
+            
+            try {
+                // Wait for the video feed first frame data to actually be available
+                await new Promise<void>((resolve, reject) => {
+                    video.onloadeddata = () => {
+                        video.play().then(resolve).catch(reject);
+                    };
+                    window.setTimeout(() => reject(new Error('Timeout loading video metadata')), 1500);
+                });
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 1920;
+                canvas.height = video.videoHeight || 1080;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                }
+                
+                video.pause();
+                video.srcObject = null;
+                video.remove(); // Cleanly remove the hidden video from the DOM
+                
+                const getStream = (canvas as any).captureStream || (canvas as any).mozCaptureStream;
+                if (!getStream) throw new Error('captureStream not supported in this browser');
+                
+                // Set fps to 5 keeping the connection alive whilst drastically lowering bandwidth
+                const frozenStream = getStream.call(canvas, 5);
+                const frozenVideoTrack = frozenStream.getVideoTracks()[0];
+                
+                pauseDataRef.current.frozenStream = frozenStream;
+                
+                // Periodic ping on the canvas. Keeps the stream active without black screening on obscure browsers
+                const staticImg = ctx?.getImageData(0, 0, canvas.width, canvas.height);
+                pauseDataRef.current.intervalId = window.setInterval(() => {
+                    if (staticImg && ctx) ctx.putImageData(staticImg, 0, 0);
+                }, 500);
+
+                Object.values(host.current).forEach((peer) => {
+                    const sender = peer.getSenders().find((s) => s.track?.kind === 'video');
+                    if (sender) {
+                        sender.replaceTrack(frozenVideoTrack).catch(console.error);
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to freeze frame, falling back to black frame:', e);
+                stream.current.getVideoTracks()[0].enabled = false;
+            }
+        }
     };
 
     const setName = (name: string): void => {
@@ -401,5 +516,5 @@ export const useRoom = (config: UIConfig): UseRoom => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    return {state, room, share, stopShare, setName};
+    return {state, room, share, stopShare, setName, togglePause};
 };

@@ -1,3 +1,4 @@
+// server/ui/src/Room.tsx
 import React, {useCallback} from 'react';
 import {Badge, Box, IconButton, Paper, Tooltip, Typography, Slider, Stack} from '@mui/material';
 import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
@@ -7,6 +8,8 @@ import PeopleIcon from '@mui/icons-material/People';
 import VolumeMuteIcon from '@mui/icons-material/VolumeOff';
 import VolumeIcon from '@mui/icons-material/VolumeUp';
 import SettingsIcon from '@mui/icons-material/Settings';
+import PausePresentationIcon from '@mui/icons-material/PausePresentation';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import {useHotkeys} from 'react-hotkeys-hook';
 import {Video} from './Video';
 import {makeStyles} from 'tss-react/mui';
@@ -58,11 +61,13 @@ export const Room = ({
     share,
     stopShare,
     setName,
+    togglePause,
 }: {
     state: ConnectedRoom;
     share: () => void;
     stopShare: () => void;
     setName: (name: string) => void;
+    togglePause: () => void;
 }) => {
     const {classes} = useStyles();
     const [open, setOpen] = React.useState(false);
@@ -132,6 +137,15 @@ export const Room = ({
 
     useHotkeys('s', () => (state.hostStream ? stopShare() : share()), [state.hostStream]);
     useHotkeys(
+        'p',
+        () => {
+            if (state.hostStream) {
+                togglePause();
+            }
+        },
+        [state.hostStream]
+    );
+    useHotkeys(
         'f',
         () => {
             if (selectedStream) {
@@ -182,6 +196,38 @@ export const Room = ({
         },
         [videoElement]
     );
+
+    // Polling background loop for OS Global Hotkey and PySide6 GUI
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            fetch('http://127.0.0.1:5055/poll')
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data.action === 'toggle_pause') {
+                        togglePause();
+                    } else if (data.action === 'start_share') {
+                        if (!state.hostStream) share();
+                    } else if (data.action === 'stop_share') {
+                        if (state.hostStream) stopShare();
+                    }
+                })
+                .catch(() => {}); // Fails silently if python helper is not running
+        }, 300);
+
+        return () => clearInterval(interval);
+    }, [state.hostStream, togglePause, share, stopShare]);
+
+    // Post active streaming state back to PySide6 GUI for synchronization
+    React.useEffect(() => {
+        fetch('http://127.0.0.1:5055/state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sharing: !!state.hostStream,
+                paused: !!state.paused
+            })
+        }).catch(() => {});
+    }, [state.hostStream, state.paused]);
 
     const videoClasses = () => {
         switch (settings.displayMode) {
@@ -242,11 +288,22 @@ export const Room = ({
                     )}
                     <Box sx={{whiteSpace: 'nowrap'}}>
                         {state.hostStream ? (
-                            <Tooltip title="Cancel Presentation" arrow>
-                                <IconButton onClick={stopShare} size="large">
-                                    <CancelPresentationIcon fontSize="large" />
-                                </IconButton>
-                            </Tooltip>
+                            <>
+                                <Tooltip title={state.paused ? "Resume Presentation" : "Pause Presentation"} arrow>
+                                    <IconButton onClick={togglePause} size="large">
+                                        {state.paused ? (
+                                            <PlayArrowIcon fontSize="large" />
+                                        ) : (
+                                            <PausePresentationIcon fontSize="large" />
+                                        )}
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Cancel Presentation" arrow>
+                                    <IconButton onClick={stopShare} size="large">
+                                        <CancelPresentationIcon fontSize="large" />
+                                    </IconButton>
+                                </Tooltip>
+                            </>
                         ) : (
                             <Tooltip title="Start Presentation" arrow>
                                 <IconButton onClick={share} size="large">
