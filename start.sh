@@ -1,3 +1,4 @@
+# /home/test/Documents/server/start.sh
 #!/bin/bash
 
 # Navigate to the server directory
@@ -10,7 +11,7 @@ cd /home/test/Documents/server || exit
 #   ./start.sh --build
 #   ./start.sh --no-build
 # =======================================================
-BUILD_UI="${BUILD_UI:-false}"
+BUILD_UI="${BUILD_UI:-true}"
 
 # Check for command line flags
 for arg in "$@"; do
@@ -68,11 +69,18 @@ else
 fi
 echo "SCREEGO_EXTERNAL_IP=$IP" >> screego.config
 
-# Automatically configure PipeWire / PulseAudio to route System Audio Monitor as default input
+# Set Linux PipeWire default input to System Speaker Monitor (COMPUTER AUDIO ONLY, NO MIC)
 DEFAULT_SINK=$(pactl get-default-sink 2>/dev/null)
 if [ -n "$DEFAULT_SINK" ]; then
-    echo "Setting default audio capture to System Output Monitor ($DEFAULT_SINK.monitor)..."
-    pactl set-default-source "${DEFAULT_SINK}.monitor" 2>/dev/null
+    # Unload any previously loaded virtual mic to prevent duplicates
+    pactl unload-module module-remap-source 2>/dev/null
+    
+    echo "Routing Computer Audio Output (No Mic) -> VirtualMic"
+    # Create a virtual microphone that maps to the speaker monitor so Chromium doesn't filter it out
+    pactl load-module module-remap-source source_name=VirtualMic master=${DEFAULT_SINK}.monitor source_properties=device.description=VirtualMic 2>/dev/null
+    
+    # Force the system to use the new VirtualMic as the default input
+    pactl set-default-source VirtualMic 2>/dev/null || pactl set-default-source "${DEFAULT_SINK}.monitor" 2>/dev/null
 fi
 
 # 4. Define the room name

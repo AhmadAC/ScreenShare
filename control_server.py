@@ -83,27 +83,6 @@ def run_http_server():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
     server.serve_forever()
 
-def auto_route_audio():
-    """Continuously ensures browser WebRTC recording streams map to system output monitor."""
-    while True:
-        try:
-            res_sink = subprocess.run(["pactl", "get-default-sink"], capture_output=True, text=True)
-            default_sink = res_sink.stdout.strip()
-            if default_sink:
-                monitor_source = f"{default_sink}.monitor"
-                res_outputs = subprocess.run(["pactl", "list", "short", "source-outputs"], capture_output=True, text=True)
-                for line in res_outputs.stdout.strip().splitlines():
-                    parts = line.split()
-                    if len(parts) >= 1:
-                        stream_id = parts[0]
-                        subprocess.run(
-                            ["pactl", "move-source-output", stream_id, monitor_source],
-                            stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
-                        )
-        except Exception:
-            pass
-        time.sleep(1.5)
-
 def rehide_browser_window():
     """Aggressively moves and lowers the browser window off-screen if KDE tries to bring it to focus."""
     for _ in range(15):  # Check every 200ms for 3 seconds
@@ -314,10 +293,6 @@ class OverlayToolbar(QWidget):
 if __name__ == '__main__':
     http_thread = threading.Thread(target=run_http_server, daemon=True)
     http_thread.start()
-
-    # Launch background auto-router for system audio
-    audio_thread = threading.Thread(target=auto_route_audio, daemon=True)
-    audio_thread.start()
 
     # Launch browser engine in the background (hidden)
     browser_proc = launch_hidden_browser(SCREEGO_URL)
