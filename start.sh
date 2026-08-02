@@ -3,6 +3,14 @@
 # Navigate to the server directory
 cd /home/test/Documents/server || exit
 
+echo "----------------------------------------"
+echo "Rebuilding React Frontend with Deno..."
+echo "----------------------------------------"
+cd ui
+deno install
+deno task build
+cd ..
+
 # 1. Forcefully kill ONLY the processes holding our specific ports (completely safe for VS Code)
 fuser -k 5050/tcp 2>/dev/null
 fuser -k 5055/tcp 2>/dev/null
@@ -40,15 +48,15 @@ echo "Room to create: $ROOM_NAME"
 echo "Students can join at: http://$IP:5050"
 echo "----------------------------------------"
 
-# 5. Start the python background control server (using your pyenv "python" binary)
-python control_server.py &
-PYTHON_PID=$!
+# 5. Construct the URL for the auto-created room
+ROOM_URL="http://127.0.0.1:5050/?room=$ROOM_NAME&create=true"
+
+# Wait 2 seconds for the Go server to boot, then start the Python GUI with the URL
+(sleep 2 && python control_server.py "$ROOM_URL") &
+SUBSHELL_PID=$!
 
 # Ensure python helper closes if shell is closed
-trap "kill $PYTHON_PID 2>/dev/null" EXIT
+trap "kill $SUBSHELL_PID 2>/dev/null; pkill -f control_server.py 2>/dev/null" EXIT
 
-# 6. Wait 2 seconds for the Go server to boot, then auto-create the room in browser
-(sleep 2 && xdg-open "http://localhost:5050/?room=$ROOM_NAME&create=true") &
-
-# 7. Start the server (blocking command)
+# 6. Start the server (blocking command)
 go run main.go serve

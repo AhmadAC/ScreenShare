@@ -341,38 +341,32 @@ export const useRoom = (config: UIConfig): UseRoom => {
     );
 
     const share = async () => {
-        if (!navigator.mediaDevices) {
-            enqueueSnackbar(
-                'Could not start presentation. Are you using https? (mediaDevices undefined)',
-                {variant: 'error', persist: true}
-            );
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+            enqueueSnackbar('Screensharing not supported in this browser.', {variant: 'error', persist: true});
             return;
         }
-        if (typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
-            enqueueSnackbar(
-                `Could not start presentation. Your browser likely doesn't support screensharing. (mediaDevices.getDeviceMedia ${typeof navigator.mediaDevices.getDisplayMedia})`,
-                {variant: 'error', persist: true}
-            );
-            return;
-        }
+
         try {
+            // Attempt 1: Fullscreen 60fps with audio
             stream.current = await navigator.mediaDevices.getDisplayMedia({
-                video: {frameRate: loadSettings().framerate},
-                audio: {
-                    echoCancellation: false,
-                    autoGainControl: false,
-                    noiseSuppression: false,
-                    // @ts-expect-error
-                    googAutoGainControl: false,
-                },
+                video: { frameRate: { ideal: 60, max: 60 } },
+                audio: true,
             });
-        } catch (e) {
-            console.log('Could not getDisplayMedia', e);
-            enqueueSnackbar(`Could not start presentation. (getDisplayMedia error). ${e}`, {
-                variant: 'error',
-                persist: true,
-            });
-            return;
+        } catch (e: any) {
+            console.log('Failed to capture screen WITH audio. OS likely blocked it. Retrying WITHOUT audio...', e);
+            try {
+                // Attempt 2: Fullscreen 60fps video-only (if OS blocks audio loopback)
+                stream.current = await navigator.mediaDevices.getDisplayMedia({
+                    video: { frameRate: { ideal: 60, max: 60 } },
+                    audio: false,
+                });
+            } catch (fallbackErr: any) {
+                enqueueSnackbar(`Could not start presentation: ${fallbackErr.message || fallbackErr.name || fallbackErr}`, {
+                    variant: 'error',
+                    persist: true,
+                });
+                return;
+            }
         }
 
         stream.current?.getVideoTracks()[0].addEventListener('ended', () => stopShare());
