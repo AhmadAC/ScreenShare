@@ -68,6 +68,13 @@ else
 fi
 echo "SCREEGO_EXTERNAL_IP=$IP" >> screego.config
 
+# Automatically configure PipeWire / PulseAudio to route System Audio Monitor as default input
+DEFAULT_SINK=$(pactl get-default-sink 2>/dev/null)
+if [ -n "$DEFAULT_SINK" ]; then
+    echo "Setting default audio capture to System Output Monitor ($DEFAULT_SINK.monitor)..."
+    pactl set-default-source "${DEFAULT_SINK}.monitor" 2>/dev/null
+fi
+
 # 4. Define the room name
 ROOM_NAME="a"
 
