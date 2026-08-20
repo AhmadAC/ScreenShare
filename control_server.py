@@ -151,15 +151,39 @@ def launch_hidden_browser(url):
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+# Interactive indicator that supports clicking to collapse and dragging to move
+class InteractiveIndicator(QLabel):
+    clicked = Signal()
+
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        self._drag_start_pos = None
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_start_pos = event.globalPosition().toPoint()
+            self.window().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton and self._drag_start_pos:
+            moved_dist = (event.globalPosition().toPoint() - self._drag_start_pos).manhattanLength()
+            if moved_dist < 6:  # Click without dragging
+                self.clicked.emit()
+            self._drag_start_pos = None
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        self.window().mouseMoveEvent(event)
+
+
 class OverlayToolbar(QWidget):
     def __init__(self):
         super().__init__()
         self.audio_muted = False
+        self.is_collapsed = False
         self._drag_pos = QPoint()
         self.init_ui()
 
     def init_ui(self):
-        # Corrected window flags for standalone Always-On-Top overlay
         self.setWindowFlags(
             Qt.WindowType.Window |
             Qt.WindowType.FramelessWindowHint |
@@ -237,8 +261,12 @@ class OverlayToolbar(QWidget):
         self.btn_mute.clicked.connect(self.toggle_mute)
         container_layout.addWidget(self.btn_mute)
 
-        self.indicator = QLabel("●", self.container)
-        self.indicator.setStyleSheet("color: #b8bb26;")
+        # Clickable indicator to collapse/expand the toolbar
+        self.indicator = InteractiveIndicator("●", self.container)
+        self.indicator.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.indicator.setToolTip("Click to collapse/expand toolbar")
+        self.set_indicator_color("#b8bb26")
+        self.indicator.clicked.connect(self.toggle_collapse)
         container_layout.addWidget(self.indicator)
         
         self.btn_exit = QPushButton("Exit", self.container)
@@ -257,6 +285,23 @@ class OverlayToolbar(QWidget):
 
         comm.state_updated.connect(self.update_gui_state)
         self.move(30, 80)
+
+    def set_indicator_color(self, color_hex):
+        self.indicator.setStyleSheet(f"color: {color_hex}; font-size: 13px; padding: 0 4px;")
+
+    def toggle_collapse(self):
+        """Collapses the toolbar to only the circle, or expands back to full size."""
+        self.is_collapsed = not self.is_collapsed
+        
+        self.grip.setVisible(not self.is_collapsed)
+        self.btn_share.setVisible(not self.is_collapsed)
+        self.btn_pause.setVisible(not self.is_collapsed)
+        self.btn_mute.setVisible(not self.is_collapsed)
+        self.btn_exit.setVisible(not self.is_collapsed)
+        
+        # Recalculate and shrink window size automatically
+        self.container.adjustSize()
+        self.adjustSize()
 
     def toggle_share(self):
         global pending_action
@@ -288,18 +333,18 @@ class OverlayToolbar(QWidget):
             if state["paused"]:
                 self.btn_pause.setText("Resume")
                 self.btn_pause.setStyleSheet("background-color: #fabd2f; color: black;")
-                self.indicator.setStyleSheet("color: #fabd2f;")
+                self.set_indicator_color("#fabd2f")
             else:
                 self.btn_pause.setText("Pause")
                 self.btn_pause.setStyleSheet("")
-                self.indicator.setStyleSheet("color: #fe8019;")
+                self.set_indicator_color("#fe8019")
         else:
             self.btn_share.setText("Share")
             self.btn_share.setStyleSheet("")
             self.btn_pause.setText("Pause")
             self.btn_pause.setStyleSheet("")
             self.btn_pause.setEnabled(False)
-            self.indicator.setStyleSheet("color: #b8bb26;")
+            self.set_indicator_color("#b8bb26")
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
