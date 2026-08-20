@@ -1,4 +1,3 @@
-# /home/test/Documents/server/control_server.py
 import sys
 import json
 import os
@@ -9,34 +8,35 @@ import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingTCPServer
 
+# Allow Qt to use xcb fallback on Wayland for 100% overlay compatibility
+if "QT_QPA_PLATFORM" not in os.environ:
+    os.environ["QT_QPA_PLATFORM"] = "xcb;wayland"
+
 # PySide6 Imports for Overlay Toolbar
-from PySide6.QtCore import Qt, QObject, Signal
+from PySide6.QtCore import Qt, QObject, Signal, QPoint
 from PySide6.QtWidgets import (
     QApplication, QWidget, QHBoxLayout, QPushButton, QLabel, 
-    QGraphicsDropShadowEffect, QSizePolicy
+    QGraphicsDropShadowEffect
 )
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QMouseEvent
 
 PORT = 5055
 
-# Check if a URL was passed via command line arguments from start.sh
 SCREEGO_URL = "http://127.0.0.1:5050/?room=a&create=true"
 if len(sys.argv) > 1 and sys.argv[1].startswith("http"):
     SCREEGO_URL = sys.argv[1]
 
-# Thread-safe communicator between HTTP thread and Qt Thread
 class CommSignals(QObject):
     state_updated = Signal(dict)
 
 comm = CommSignals()
 
-# Global states
 app_state = {"sharing": False, "paused": False}
 pending_action = None
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
-        pass  # Suppress console spam
+        pass
 
     def do_OPTIONS(self):
         self.send_response(200)
@@ -83,52 +83,56 @@ def run_http_server():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
     server.serve_forever()
 
-def rehide_browser_window():
-    """Aggressively moves and lowers the browser window off-screen if KDE tries to bring it to focus."""
-    for _ in range(15):  # Check every 200ms for 3 seconds
-        try:
-            subprocess.run(
-                ["xdotool", "search", "--name", "Screego", "windowmove", "9999", "9999"],
-                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
-            )
-            subprocess.run(
-                ["wmctrl", "-r", "Screego", "-b", "add,below,skip_taskbar,skip_pager"],
-                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
-            )
-            subprocess.run(
-                ["xdotool", "search", "--name", "Screego", "windowminimize"],
-                stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
-            )
-        except Exception:
-            pass
-        time.sleep(0.2)
-
 def launch_hidden_browser(url):
-    """Finds Edge or Chrome and launches it completely hidden off-screen in the background."""
-    browsers = [
-        "microsoft-edge-stable", "microsoft-edge",
-        "google-chrome-stable", "google-chrome",
-        "chromium-browser", "chromium"
-    ]
-    
-    executable = None
-    for b in browsers:
-        path = shutil.which(b)
-        if path:
-            executable = path
-            break
-            
-    if not executable:
-        print("WARNING: No Edge or Chrome executable found.")
+    """Finds and launches Edge on your host computer system from inside Toolbx or directly."""
+    executable_cmd = []
+
+    # 1. If running inside Toolbx, bridge to the HOST system's Edge
+    if shutil.which("flatpak-spawn"):
+        for binary in ["microsoft-edge-stable", "microsoft-edge"]:
+            res = subprocess.run(
+                ["flatpak-spawn", "--host", "which", binary],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                executable_cmd = ["flatpak-spawn", "--host", res.stdout.strip()]
+                break
+
+        if not executable_cmd:
+            res = subprocess.run(
+                ["flatpak-spawn", "--host", "flatpak", "info", "com.microsoft.Edge"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            if res.returncode == 0:
+                executable_cmd = ["flatpak-spawn", "--host", "flatpak", "run", "com.microsoft.Edge"]
+
+    # 2. If running directly on the host
+    if not executable_cmd:
+        for binary in ["microsoft-edge-stable", "microsoft-edge"]:
+            path = shutil.which(binary)
+            if path:
+                executable_cmd = [path]
+                break
+
+        if not executable_cmd and shutil.which("flatpak"):
+            res = subprocess.run(
+                ["flatpak", "info", "com.microsoft.Edge"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            if res.returncode == 0:
+                executable_cmd = ["flatpak", "run", "com.microsoft.Edge"]
+
+    if not executable_cmd:
+        print("WARNING: Could not find Microsoft Edge on your computer system.")
         return None
 
-    cmd = [
-        executable,
+    cmd = executable_cmd + [
         f"--app={url}",
+        "--ozone-platform-hint=auto",
+        "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization",
         "--use-fake-ui-for-media-stream",
         "--auto-select-desktop-capture-source=Entire screen",
         "--enable-usermedia-screen-capturing",
-        "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization",
         "--ignore-gpu-blocklist",
         "--enable-gpu-rasterization",
         "--enable-zero-copy",
@@ -143,26 +147,27 @@ def launch_hidden_browser(url):
         "--disable-component-update"
     ]
     
-    print(f"Launching Background Streaming Engine...")
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    threading.Thread(target=rehide_browser_window, daemon=True).start()
-    return proc
+    print(f"Launching Host Edge Streaming Engine with: {' '.join(executable_cmd)}")
+    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-# PySide6 Overlay Window
 class OverlayToolbar(QWidget):
     def __init__(self):
         super().__init__()
         self.audio_muted = False
+        self._drag_pos = QPoint()
         self.init_ui()
 
     def init_ui(self):
+        # Corrected window flags for standalone Always-On-Top overlay
         self.setWindowFlags(
+            Qt.WindowType.Window |
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.Tool
+            Qt.WindowType.WindowDoesNotAcceptFocus
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
         layout = QHBoxLayout()
         layout.setContentsMargins(5, 5, 5, 5)
@@ -172,7 +177,7 @@ class OverlayToolbar(QWidget):
         self.container.setObjectName("Container")
         self.container.setStyleSheet("""
             QWidget#Container {
-                background-color: rgba(40, 40, 40, 220);
+                background-color: rgba(40, 40, 40, 235);
                 border: 1px solid #458588;
                 border-radius: 12px;
             }
@@ -216,7 +221,7 @@ class OverlayToolbar(QWidget):
         container_layout.setSpacing(4)
 
         self.grip = QLabel(" ⠿ ", self.container)
-        self.grip.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.grip.setCursor(Qt.CursorShape.SizeAllCursor)
         container_layout.addWidget(self.grip)
 
         self.btn_share = QPushButton("Share", self.container)
@@ -236,7 +241,6 @@ class OverlayToolbar(QWidget):
         self.indicator.setStyleSheet("color: #b8bb26;")
         container_layout.addWidget(self.indicator)
         
-        # Add Exit Button to clean up and quit
         self.btn_exit = QPushButton("Exit", self.container)
         self.btn_exit.setObjectName("ExitBtn")
         self.btn_exit.clicked.connect(QApplication.instance().quit)
@@ -252,7 +256,7 @@ class OverlayToolbar(QWidget):
         self.container.setGraphicsEffect(shadow)
 
         comm.state_updated.connect(self.update_gui_state)
-        self.move(20, 80)
+        self.move(30, 80)
 
     def toggle_share(self):
         global pending_action
@@ -260,7 +264,6 @@ class OverlayToolbar(QWidget):
             pending_action = "stop_share"
         else:
             pending_action = "start_share"
-            threading.Thread(target=rehide_browser_window, daemon=True).start()
 
     def trigger_pause(self):
         global pending_action
@@ -285,24 +288,27 @@ class OverlayToolbar(QWidget):
             if state["paused"]:
                 self.btn_pause.setText("Resume")
                 self.btn_pause.setStyleSheet("background-color: #fabd2f; color: black;")
-                self.indicator.setStyleSheet("color: #fabd2f;") # Yellow indicator
+                self.indicator.setStyleSheet("color: #fabd2f;")
             else:
                 self.btn_pause.setText("Pause")
                 self.btn_pause.setStyleSheet("")
-                self.indicator.setStyleSheet("color: #fe8019;") # Orange indicator
+                self.indicator.setStyleSheet("color: #fe8019;")
         else:
             self.btn_share.setText("Share")
             self.btn_share.setStyleSheet("")
             self.btn_pause.setText("Pause")
             self.btn_pause.setStyleSheet("")
             self.btn_pause.setEnabled(False)
-            self.indicator.setStyleSheet("color: #b8bb26;") # Green indicator
+            self.indicator.setStyleSheet("color: #b8bb26;")
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
-            window = self.windowHandle()
-            if window:
-                window.startSystemMove()
+            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if event.buttons() == Qt.MouseButton.LeftButton:
+            self.move(event.globalPosition().toPoint() - self._drag_pos)
             event.accept()
 
 if __name__ == '__main__':
@@ -317,7 +323,6 @@ if __name__ == '__main__':
     toolbar.show()
     
     def cleanup():
-        # 1. Kill hidden browser stream
         if browser_proc:
             browser_proc.terminate()
             try:
@@ -325,14 +330,9 @@ if __name__ == '__main__':
             except Exception:
                 browser_proc.kill()
                 
-        # 2. Delete Virtual Microphone from Linux PulseAudio/PipeWire
         subprocess.run(["pactl", "unload-module", "module-remap-source"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        
-        # 3. Kill the Go server running in start.sh
         subprocess.run(["pkill", "-f", "go run . serve"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         subprocess.run(["pkill", "-f", "screego"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        
-        # 4. Kill the bash script itself
         subprocess.run(["pkill", "-f", "start.sh"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
     app.aboutToQuit.connect(cleanup)

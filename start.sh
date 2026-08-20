@@ -2,7 +2,7 @@
 #!/bin/bash
 
 # Navigate to the server directory
-cd /home/test/Documents/server || exit
+cd /var/mnt/shared-drive/2027/ComputerScripts/server || exit
 
 # =======================================================
 # TOGGLE BUILD OPTION
