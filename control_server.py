@@ -34,6 +34,24 @@ comm = CommSignals()
 app_state = {"sharing": False, "paused": False}
 pending_action = None
 
+def run_audio_cmd(args):
+    """Executes pactl commands directly or bridged through flatpak-spawn."""
+    try:
+        subprocess.run(args, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+    except Exception:
+        if shutil.which("flatpak-spawn"):
+            try:
+                subprocess.run(["flatpak-spawn", "--host"] + args, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            except Exception:
+                pass
+
+def setup_virtual_mic():
+    """Ensures the VirtualMic is created, unmuted, and active for the stream."""
+    run_audio_cmd(["pactl", "load-module", "module-remap-source", "source_name=VirtualMic", "master=@DEFAULT_SINK@.monitor", "source_properties=device.description=VirtualMic"])
+    run_audio_cmd(["pactl", "set-default-source", "VirtualMic"])
+    run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "0"])
+    run_audio_cmd(["pactl", "set-source-volume", "VirtualMic", "100%"])
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -84,10 +102,11 @@ def run_http_server():
     server.serve_forever()
 
 def launch_hidden_browser(url):
-    """Finds and launches Edge on your host computer system from inside Toolbx or directly."""
+    """Finds and launches Edge on your host computer system with full audio capture enabled."""
+    setup_virtual_mic()
     executable_cmd = []
 
-    # 1. If running inside Toolbx, bridge to the HOST system's Edge
+    # 1. Check if running inside Toolbx and bridge to Host Edge
     if shutil.which("flatpak-spawn"):
         for binary in ["microsoft-edge-stable", "microsoft-edge"]:
             res = subprocess.run(
@@ -106,7 +125,7 @@ def launch_hidden_browser(url):
             if res.returncode == 0:
                 executable_cmd = ["flatpak-spawn", "--host", "flatpak", "run", "com.microsoft.Edge"]
 
-    # 2. If running directly on the host
+    # 2. Check if running directly on Host
     if not executable_cmd:
         for binary in ["microsoft-edge-stable", "microsoft-edge"]:
             path = shutil.which(binary)
@@ -126,10 +145,13 @@ def launch_hidden_browser(url):
         print("WARNING: Could not find Microsoft Edge on your computer system.")
         return None
 
+    # Full audio + screen capture flags
     cmd = executable_cmd + [
         f"--app={url}",
         "--ozone-platform-hint=auto",
-        "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization",
+        "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization,PulseaudioLoopbackForCast",
+        "--alsa-input-device=pulse",
+        "--alsa-output-device=pulse",
         "--use-fake-ui-for-media-stream",
         "--auto-select-desktop-capture-source=Entire screen",
         "--enable-usermedia-screen-capturing",
@@ -151,7 +173,7 @@ def launch_hidden_browser(url):
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-# Interactive indicator that supports clicking to collapse and dragging to move
+# Interactive indicator that supports clicking to collapse/expand and dragging to move
 class InteractiveIndicator(QLabel):
     clicked = Signal()
 
@@ -167,7 +189,7 @@ class InteractiveIndicator(QLabel):
     def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton and self._drag_start_pos:
             moved_dist = (event.globalPosition().toPoint() - self._drag_start_pos).manhattanLength()
-            if moved_dist < 6:  # Click without dragging
+            if moved_dist < 6:  # Pure click, not a drag
                 self.clicked.emit()
             self._drag_start_pos = None
 
@@ -261,7 +283,7 @@ class OverlayToolbar(QWidget):
         self.btn_mute.clicked.connect(self.toggle_mute)
         container_layout.addWidget(self.btn_mute)
 
-        # Clickable indicator to collapse/expand the toolbar
+        # Clickable indicator to collapse/expand
         self.indicator = InteractiveIndicator("●", self.container)
         self.indicator.setCursor(Qt.CursorShape.PointingHandCursor)
         self.indicator.setToolTip("Click to collapse/expand toolbar")
@@ -290,16 +312,12 @@ class OverlayToolbar(QWidget):
         self.indicator.setStyleSheet(f"color: {color_hex}; font-size: 13px; padding: 0 4px;")
 
     def toggle_collapse(self):
-        """Collapses the toolbar to only the circle, or expands back to full size."""
         self.is_collapsed = not self.is_collapsed
-        
         self.grip.setVisible(not self.is_collapsed)
         self.btn_share.setVisible(not self.is_collapsed)
         self.btn_pause.setVisible(not self.is_collapsed)
         self.btn_mute.setVisible(not self.is_collapsed)
         self.btn_exit.setVisible(not self.is_collapsed)
-        
-        # Recalculate and shrink window size automatically
         self.container.adjustSize()
         self.adjustSize()
 
@@ -319,11 +337,11 @@ class OverlayToolbar(QWidget):
         if self.audio_muted:
             self.btn_mute.setText("Unmute")
             self.btn_mute.setStyleSheet("background-color: #cc241d; color: white;")
-            subprocess.run(["pactl", "set-source-mute", "VirtualMic", "1"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "1"])
         else:
             self.btn_mute.setText("Mute")
             self.btn_mute.setStyleSheet("")
-            subprocess.run(["pactl", "set-source-mute", "VirtualMic", "0"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "0"])
 
     def update_gui_state(self, state):
         if state["sharing"]:
@@ -375,7 +393,9 @@ if __name__ == '__main__':
             except Exception:
                 browser_proc.kill()
                 
-        subprocess.run(["pactl", "unload-module", "module-remap-source"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        # Safely unload VirtualMic from PipeWire
+        run_audio_cmd(["pactl", "unload-module", "module-remap-source"])
+        
         subprocess.run(["pkill", "-f", "go run . serve"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         subprocess.run(["pkill", "-f", "screego"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         subprocess.run(["pkill", "-f", "start.sh"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
