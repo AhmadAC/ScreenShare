@@ -54,7 +54,7 @@ const CreateRoom = ({room, config}: Pick<UseRoom, 'room'> & {config: UIConfig}) 
                     <Typography>
                         Nat Traversal via:{' '}
                         <Link
-                            href="https://screego.net/#/nat-traversal"
+                            href="https://ScreenShare.net/#/nat-traversal"
                             target="_blank"
                             rel="noreferrer"
                         >
@@ -118,8 +118,8 @@ export const RoomManage = ({room, config}: {room: FCreateRoom; config: UseConfig
                 </Paper>
             </Grid>
             <div style={{position: 'absolute', margin: '0 auto', bottom: 0}}>
-                Screego {config.version} |{' '}
-                <Link href="https://github.com/screego/server/">GitHub</Link>
+                ScreenShare {config.version} |{' '}
+                <Link href="https://github.com/ScreenShare/server/">GitHub</Link>
             </div>
         </Grid>
     );

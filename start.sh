@@ -32,7 +32,7 @@ for arg in "$@"; do
         --help|-h)
             echo "Usage: ./start.sh [options]"
             echo "Options:"
-            echo "  (no args)       Start the Screego application (auto-builds binary if missing)"
+            echo "  (no args)       Start the ScreenShare application (auto-builds binary if missing)"
             echo "  --build, -b     Rebuild the React frontend and Go binary before starting"
             echo "  --package, -p   Rebuild and package into standalone bundle using PyInstaller"
             echo "  --help, -h      Show this help message"
@@ -42,14 +42,14 @@ for arg in "$@"; do
 done
 
 # Check if precompiled Go binary or UI build directory is missing
-if [ ! -f "$SCRIPT_DIR/screego" ] || [ ! -d "$SCRIPT_DIR/ui/build" ]; then
+if [ ! -f "$SCRIPT_DIR/ScreenShare" ] || [ ! -d "$SCRIPT_DIR/ui/build" ]; then
     BUILD_REQUESTED=true
 fi
 
 # 1. Build Frontend and Go Binary if requested or missing
 if [ "$BUILD_REQUESTED" = "true" ]; then
     echo "=========================================="
-    echo " Building Screego Application Assets"
+    echo " Building ScreenShare Application Assets"
     echo "=========================================="
     
     if [ -d "ui" ]; then
@@ -71,10 +71,10 @@ if [ "$BUILD_REQUESTED" = "true" ]; then
         cd "$SCRIPT_DIR"
     fi
 
-    echo "[2/2] Compiling standalone Go binary (screego)..."
+    echo "[2/2] Compiling standalone Go binary (ScreenShare)..."
     if command -v go &>/dev/null; then
         export CGO_ENABLED=0
-        go build -ldflags="-s -w -X main.mode=prod" -o screego .
+        go build -ldflags="-s -w -X main.mode=prod" -o ScreenShare .
     else
         echo "Error: 'go' compiler is not installed or not in PATH."
         exit 1
@@ -93,15 +93,15 @@ if [ "$PACKAGE_REQUESTED" = "true" ]; then
         fi
         
         $PYINSTALLER_CMD --noconfirm --onedir --windowed \
-            --name "screego-host" \
-            --add-binary "screego:." \
+            --name "ScreenShare-host" \
+            --add-binary "ScreenShare:." \
             --add-data "users:." \
             control_server.py
             
         echo "=========================================="
         echo " Packaging complete!"
-        echo " Standalone bundle: $SCRIPT_DIR/dist/screego-host/screego-host"
-        echo " You can distribute the 'dist/screego-host' folder to any host without Go/Python installed."
+        echo " Standalone bundle: $SCRIPT_DIR/dist/ScreenShare-host/ScreenShare-host"
+        echo " You can distribute the 'dist/ScreenShare-host' folder to any host without Go/Python installed."
         echo "=========================================="
         exit 0
     else
@@ -112,10 +112,10 @@ if [ "$PACKAGE_REQUESTED" = "true" ]; then
 fi
 
 # 3. Launch via Standalone Bundle or Python Controller
-if [ -f "$SCRIPT_DIR/dist/screego-host/screego-host" ] && [ "$BUILD_REQUESTED" = "false" ]; then
-    echo "Starting prepackaged standalone binary: dist/screego-host/screego-host"
-    exec "$SCRIPT_DIR/dist/screego-host/screego-host"
+if [ -f "$SCRIPT_DIR/dist/ScreenShare-host/ScreenShare-host" ] && [ "$BUILD_REQUESTED" = "false" ]; then
+    echo "Starting prepackaged standalone binary: dist/ScreenShare-host/ScreenShare-host"
+    exec "$SCRIPT_DIR/dist/ScreenShare-host/ScreenShare-host"
 else
-    echo "Starting Screego Controller..."
+    echo "Starting ScreenShare Controller..."
     exec "$PYTHON_BIN" "$SCRIPT_DIR/control_server.py"
 fi

@@ -270,27 +270,12 @@ export const Room = ({
 
     return (
         <div className={classes.videoContainer}>
-            {controlVisible && (
-                <Paper className={classes.title} elevation={10} {...setHoverState}>
-                    <Tooltip title="Copy Link">
-                        <Typography
-                            variant="h4"
-                            component="h4"
-                            style={{cursor: 'pointer'}}
-                            onClick={copyLink}
-                        >
-                            {state.id}
-                        </Typography>
-                    </Tooltip>
-                </Paper>
-            )}
-
             {audioBlocked && !isHostSelfStream && (
                 <Paper
                     elevation={10}
                     style={{
                         position: 'fixed',
-                        top: '90px',
+                        top: '30px',
                         left: '50%',
                         transform: 'translateX(-50%)',
                         zIndex: 40,
@@ -581,14 +566,6 @@ const AudioControl = ({
 };
 
 const useStyles = makeStyles()(() => ({
-    title: {
-        padding: 15,
-        position: 'fixed',
-        top: '30px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 30,
-    },
     bottomContainer: {
         position: 'fixed',
         display: 'flex',

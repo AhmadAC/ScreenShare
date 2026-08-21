@@ -14,14 +14,14 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/rs/zerolog"
-	"github.com/screego/server/config/ipdns"
-	"github.com/screego/server/config/mode"
+	"github.com/ScreenShare/server/config/ipdns"
+	"github.com/ScreenShare/server/config/mode"
 )
 
 var (
-	prefix        = "screego"
-	files         = []string{"screego.config.development.local", "screego.config.development", "screego.config.local", "screego.config"}
-	absoluteFiles = []string{"/etc/screego/server.config"}
+	prefix        = "ScreenShare"
+	files         = []string{"ScreenShare.config.development.local", "ScreenShare.config.development", "ScreenShare.config.local", "ScreenShare.config"}
+	absoluteFiles = []string{"/etc/ScreenShare/server.config"}
 	osExecutable  = os.Executable
 	osStat        = os.Stat
 )
@@ -136,16 +136,16 @@ func Get() (Config, []FutureLog) {
 
 	if config.AuthMode != AuthModeTurn && config.AuthMode != AuthModeAll && config.AuthMode != AuthModeNone {
 		logs = append(logs,
-			futureFatal(fmt.Sprintf("invalid SCREEGO_AUTH_MODE: %s", config.AuthMode)))
+			futureFatal(fmt.Sprintf("invalid ScreenShare_AUTH_MODE: %s", config.AuthMode)))
 	}
 
 	if config.ServerTLS {
 		if config.TLSCertFile == "" {
-			logs = append(logs, futureFatal("SCREEGO_TLS_CERT_FILE must be set if TLS is enabled"))
+			logs = append(logs, futureFatal("ScreenShare_TLS_CERT_FILE must be set if TLS is enabled"))
 		}
 
 		if config.TLSKeyFile == "" {
-			logs = append(logs, futureFatal("SCREEGO_TLS_KEY_FILE must be set if TLS is enabled"))
+			logs = append(logs, futureFatal("ScreenShare_TLS_KEY_FILE must be set if TLS is enabled"))
 		}
 	}
 
@@ -175,7 +175,7 @@ func Get() (Config, []FutureLog) {
 		if _, err := rand.Read(config.Secret); err == nil {
 			logs = append(logs, FutureLog{
 				Level: zerolog.InfoLevel,
-				Msg:   "SCREEGO_SECRET unset, user logins will be invalidated on restart",
+				Msg:   "ScreenShare_SECRET unset, user logins will be invalidated on restart",
 			})
 		} else {
 			logs = append(logs, futureFatal(fmt.Sprintf("cannot create secret %s", err)))
@@ -186,34 +186,34 @@ func Get() (Config, []FutureLog) {
 
 	if len(config.TurnExternalIP) > 0 {
 		if len(config.ExternalIP) > 0 {
-			logs = append(logs, futureFatal("SCREEGO_EXTERNAL_IP and SCREEGO_TURN_EXTERNAL_IP must not be both set"))
+			logs = append(logs, futureFatal("ScreenShare_EXTERNAL_IP and ScreenShare_TURN_EXTERNAL_IP must not be both set"))
 		}
 
-		config.TurnIPProvider, errs = parseIPProvider(config.TurnExternalIP, "SCREEGO_TURN_EXTERNAL_IP")
+		config.TurnIPProvider, errs = parseIPProvider(config.TurnExternalIP, "ScreenShare_TURN_EXTERNAL_IP")
 		config.TurnPort = config.TurnExternalPort
 		config.TurnExternal = true
 		logs = append(logs, errs...)
 		if config.TurnExternalSecret == "" {
-			logs = append(logs, futureFatal("SCREEGO_TURN_EXTERNAL_SECRET must be set if external TURN server is used"))
+			logs = append(logs, futureFatal("ScreenShare_TURN_EXTERNAL_SECRET must be set if external TURN server is used"))
 		}
 	} else if len(config.ExternalIP) > 0 {
-		config.TurnIPProvider, errs = parseIPProvider(config.ExternalIP, "SCREEGO_EXTERNAL_IP")
+		config.TurnIPProvider, errs = parseIPProvider(config.ExternalIP, "ScreenShare_EXTERNAL_IP")
 		logs = append(logs, errs...)
 		split := strings.Split(config.TurnAddress, ":")
 		config.TurnPort = split[len(split)-1]
 	} else {
-		logs = append(logs, futureFatal("SCREEGO_EXTERNAL_IP or SCREEGO_TURN_EXTERNAL_IP must be set"))
+		logs = append(logs, futureFatal("ScreenShare_EXTERNAL_IP or ScreenShare_TURN_EXTERNAL_IP must be set"))
 	}
 
 	min, max, err := config.parsePortRange()
 	if err != nil {
-		logs = append(logs, futureFatal(fmt.Sprintf("invalid SCREEGO_TURN_PORT_RANGE: %s", err)))
+		logs = append(logs, futureFatal(fmt.Sprintf("invalid ScreenShare_TURN_PORT_RANGE: %s", err)))
 	} else if min == 0 && max == 0 {
 		// valid; no port range
 	} else if min == 0 || max == 0 {
-		logs = append(logs, futureFatal("invalid SCREEGO_TURN_PORT_RANGE: min or max port is 0"))
+		logs = append(logs, futureFatal("invalid ScreenShare_TURN_PORT_RANGE: min or max port is 0"))
 	} else if min > max {
-		logs = append(logs, futureFatal(fmt.Sprintf("invalid SCREEGO_TURN_PORT_RANGE: min port (%d) is higher than max port (%d)", min, max)))
+		logs = append(logs, futureFatal(fmt.Sprintf("invalid ScreenShare_TURN_PORT_RANGE: min port (%d) is higher than max port (%d)", min, max)))
 	} else if (max - min) < 40 {
 		logs = append(logs, FutureLog{
 			Level: zerolog.WarnLevel,
@@ -227,7 +227,7 @@ func Get() (Config, []FutureLog) {
 		if err != nil {
 			logs = append(logs, FutureLog{
 				Level: zerolog.FatalLevel,
-				Msg:   fmt.Sprintf("Invalid SCREEGO_TURN_DENY_PEERS %q: %s", cidrString, err),
+				Msg:   fmt.Sprintf("Invalid ScreenShare_TURN_DENY_PEERS %q: %s", cidrString, err),
 			})
 		} else {
 			config.TurnDenyPeersParsed = append(config.TurnDenyPeersParsed, cidr)
@@ -242,8 +242,8 @@ func Get() (Config, []FutureLog) {
 }
 
 func logDeprecated() []FutureLog {
-	if os.Getenv("SCREEGO_TURN_STRICT_AUTH") != "" {
-		return []FutureLog{{Level: zerolog.WarnLevel, Msg: "The setting SCREEGO_TURN_STRICT_AUTH has been removed."}}
+	if os.Getenv("ScreenShare_TURN_STRICT_AUTH") != "" {
+		return []FutureLog{{Level: zerolog.WarnLevel, Msg: "The setting ScreenShare_TURN_STRICT_AUTH has been removed."}}
 	}
 	return nil
 }
@@ -276,7 +276,7 @@ func getFiles(relativeTo string) []string {
 	}
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
-		result = append(result, filepath.Join(homeDir, ".config/screego/server.config"))
+		result = append(result, filepath.Join(homeDir, ".config/ScreenShare/server.config"))
 	}
 	result = append(result, absoluteFiles...)
 	return result

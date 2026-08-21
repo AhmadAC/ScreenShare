@@ -30,7 +30,7 @@ export const LoginForm = ({config: {login}, hide}: {config: UseConfig; hide?: ()
             <FormControl fullWidth>
                 <form onSubmit={submit}>
                     <div style={{display: 'flex', alignItems: 'center'}}>
-                        <Typography style={{flex: 1}}>Login to Screego</Typography>
+                        <Typography style={{flex: 1}}>Login to ScreenShare</Typography>
                         {hide ? (
                             <Button variant="outlined" size="small" onClick={hide}>
                                 Go Back

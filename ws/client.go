@@ -11,7 +11,7 @@ import (
 	"github.com/rs/xid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/screego/server/ws/outgoing"
+	"github.com/ScreenShare/server/ws/outgoing"
 )
 
 var ping = func(conn *websocket.Conn) error {

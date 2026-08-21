@@ -10,10 +10,10 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/rs/xid"
 	"github.com/rs/zerolog/log"
-	"github.com/screego/server/auth"
-	"github.com/screego/server/config"
-	"github.com/screego/server/turn"
-	"github.com/screego/server/util"
+	"github.com/ScreenShare/server/auth"
+	"github.com/ScreenShare/server/config"
+	"github.com/ScreenShare/server/turn"
+	"github.com/ScreenShare/server/util"
 )
 
 func NewRooms(tServer turn.Server, users *auth.Users, conf config.Config) *Rooms {

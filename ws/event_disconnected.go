@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/gorilla/websocket"
-	"github.com/screego/server/ws/outgoing"
+	"github.com/ScreenShare/server/ws/outgoing"
 )
 
 type Disconnected struct {

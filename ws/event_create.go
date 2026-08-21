@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rs/xid"
-	"github.com/screego/server/config"
+	"github.com/ScreenShare/server/config"
 )
 
 func init() {

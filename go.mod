@@ -1,4 +1,4 @@
-module github.com/screego/server
+module github.com/ScreenShare/server
 
 go 1.26.0
 

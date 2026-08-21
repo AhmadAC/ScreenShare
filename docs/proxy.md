@@ -1,15 +1,15 @@
 # Proxy
 
-!> When using a proxy enable `SCREEGO_TRUST_PROXY_HEADERS`. See [Configuration](config.md).
+!> When using a proxy enable `ScreenShare_TRUST_PROXY_HEADERS`. See [Configuration](config.md).
 
 ## nginx
 
 ### At root path
 
 ```nginx
-upstream screego {
+upstream ScreenShare {
   # Set this to the address configured in
-  # SCREEGO_SERVER_ADDRESS. Default 5050
+  # ScreenShare_SERVER_ADDRESS. Default 5050
   server 127.0.0.1:5050;
 }
 
@@ -17,11 +17,11 @@ server {
   listen 80;
 
   # Here goes your domain / subdomain
-  server_name screego.example.com;
+  server_name ScreenShare.example.com;
 
   location / {
-    # Proxy to screego
-    proxy_pass         http://screego;
+    # Proxy to ScreenShare
+    proxy_pass         http://ScreenShare;
     proxy_http_version 1.1;
 
     # Set headers for proxying WebSocket
@@ -34,7 +34,7 @@ server {
     proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header   X-Forwarded-Proto http;
 
-    # The proxy must preserve the host because screego verifies it with the origin
+    # The proxy must preserve the host because ScreenShare verifies it with the origin
     # for WebSocket connections
     proxy_set_header   Host $http_host;
   }
@@ -44,9 +44,9 @@ server {
 ### At a sub path
 
 ```nginx
-upstream screego {
+upstream ScreenShare {
   # Set this to the address configured in
-  # SCREEGO_SERVER_ADDRESS. Default 5050
+  # ScreenShare_SERVER_ADDRESS. Default 5050
   server 127.0.0.1:5050;
 }
 
@@ -54,13 +54,13 @@ server {
   listen 80;
 
   # Here goes your domain / subdomain
-  server_name screego.example.com;
+  server_name ScreenShare.example.com;
 
-  location /screego/ {
-    rewrite ^/screego(/.*) $1 break;
+  location /ScreenShare/ {
+    rewrite ^/ScreenShare(/.*) $1 break;
   
-    # Proxy to screego
-    proxy_pass         http://screego;
+    # Proxy to ScreenShare
+    proxy_pass         http://ScreenShare;
     proxy_http_version 1.1;
 
     # Set headers for proxying WebSocket
@@ -73,7 +73,7 @@ server {
     proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header   X-Forwarded-Proto http;
 
-    # The proxy must preserve the host because screego verifies it with the origin
+    # The proxy must preserve the host because ScreenShare verifies it with the origin
     # for WebSocket connections
     proxy_set_header   Host $http_host;
   }
@@ -92,14 +92,14 @@ The following modules are required:
 
 ```apache
 <VirtualHost *:80>
-    ServerName screego.example.com
+    ServerName ScreenShare.example.com
     Keepalive On
 
-    # The proxy must preserve the host because screego verifies it with the origin
+    # The proxy must preserve the host because ScreenShare verifies it with the origin
     # for WebSocket connections
     ProxyPreserveHost On
 
-    # Replace 5050 with the port defined in SCREEGO_SERVER_ADDRESS.
+    # Replace 5050 with the port defined in ScreenShare_SERVER_ADDRESS.
     # Default 5050
 
     # Proxy web socket requests to /stream
@@ -116,22 +116,22 @@ The following modules are required:
 
 ```apache
 <VirtualHost *:80>
-    ServerName screego.example.com
+    ServerName ScreenShare.example.com
     Keepalive On
 
-    Redirect 301 "/screego" "/screego/"
+    Redirect 301 "/ScreenShare" "/ScreenShare/"
 
-    # The proxy must preserve the host because screego verifies it with the origin
+    # The proxy must preserve the host because ScreenShare verifies it with the origin
     # for WebSocket connections
     ProxyPreserveHost On
 
     # Proxy web socket requests to /stream
-    ProxyPass "/screego/stream" ws://127.0.0.1:5050/stream retry=0 timeout=5
+    ProxyPass "/ScreenShare/stream" ws://127.0.0.1:5050/stream retry=0 timeout=5
 
     # Proxy all other requests to /
-    ProxyPass "/screego/" http://127.0.0.1:5050/ retry=0 timeout=5
+    ProxyPass "/ScreenShare/" http://127.0.0.1:5050/ retry=0 timeout=5
     #                 ^- !!trailing slash is required!!
 
-    ProxyPassReverse /screego/ http://127.0.0.1:5050/
+    ProxyPassReverse /ScreenShare/ http://127.0.0.1:5050/
 </VirtualHost>
 ```

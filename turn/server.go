@@ -11,9 +11,9 @@ import (
 
 	"github.com/pion/turn/v4"
 	"github.com/rs/zerolog/log"
-	"github.com/screego/server/config"
-	"github.com/screego/server/config/ipdns"
-	"github.com/screego/server/util"
+	"github.com/ScreenShare/server/config"
+	"github.com/ScreenShare/server/config/ipdns"
+	"github.com/ScreenShare/server/util"
 )
 
 type Server interface {
@@ -36,7 +36,7 @@ type Entry struct {
 	password []byte
 }
 
-const Realm = "screego"
+const Realm = "ScreenShare"
 
 type Generator struct {
 	turn.RelayAddressGenerator

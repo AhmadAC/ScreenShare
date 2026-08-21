@@ -36,10 +36,10 @@ BASE_DIR = get_base_dir()
 
 # AppImage sets $OWD to the directory where the user launched the application
 EXECUTION_DIR = os.environ.get("OWD", os.getcwd())
-LOG_FILE_PATH = os.path.join(EXECUTION_DIR, "screego-host.log")
+LOG_FILE_PATH = os.path.join(EXECUTION_DIR, "ScreenShare-host.log")
 
 def log(msg):
-    """Outputs timestamped message to stdout and appends to screego-host.log in run directory."""
+    """Outputs timestamped message to stdout and appends to ScreenShare-host.log in run directory."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     formatted = f"[{timestamp}] {msg}"
     print(formatted)
@@ -130,7 +130,7 @@ def detect_lan_ip():
     return "127.0.0.1"
 
 def kill_port_owners():
-    """Terminates any stale processes using Screego/Control ports."""
+    """Terminates any stale processes using Screego/ScreenShare/Control ports."""
     ports = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
     for port in ports:
         subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -253,8 +253,8 @@ def run_http_server():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
     server.serve_forever()
 
-def find_or_build_screego():
-    """Locates the screego binary across server/, root, and parent directories or auto-builds it."""
+def find_or_build_binary():
+    """Locates ScreenShare or screego binary across search directories or auto-builds it."""
     search_dirs = [
         os.path.join(BASE_DIR, "server"),
         BASE_DIR,
@@ -264,19 +264,23 @@ def find_or_build_screego():
         os.path.dirname(BASE_DIR)
     ]
 
-    for d in search_dirs:
-        bin_path = os.path.join(d, "screego")
-        if os.path.isfile(bin_path):
-            if not os.access(bin_path, os.X_OK):
-                try:
-                    os.chmod(bin_path, 0o755)
-                except Exception:
-                    pass
-            return bin_path
+    target_names = ["ScreenShare", "screenshare", "screego"]
 
-    in_path = shutil.which("screego")
-    if in_path:
-        return in_path
+    for d in search_dirs:
+        for name in target_names:
+            bin_path = os.path.join(d, name)
+            if os.path.isfile(bin_path):
+                if not os.access(bin_path, os.X_OK):
+                    try:
+                        os.chmod(bin_path, 0o755)
+                    except Exception:
+                        pass
+                return bin_path
+
+    for name in target_names:
+        in_path = shutil.which(name)
+        if in_path:
+            return in_path
 
     go_bins = [
         shutil.which("go"),
@@ -296,7 +300,7 @@ def find_or_build_screego():
 
         if src_dir:
             log("========================================")
-            log(f"Screego binary missing. Compiling in: {src_dir}")
+            log(f"Backend binary missing. Compiling in: {src_dir}")
             log("========================================")
             
             ui_dist = os.path.join(src_dir, "ui", "build")
@@ -313,7 +317,7 @@ def find_or_build_screego():
                     subprocess.run([deno_cmd, "install"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     subprocess.run([deno_cmd, "task", "build"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-            out_bin = os.path.join(src_dir, "screego")
+            out_bin = os.path.join(src_dir, "ScreenShare")
             env = os.environ.copy()
             env["CGO_ENABLED"] = "0"
             build_res = subprocess.run(
@@ -327,66 +331,13 @@ def find_or_build_screego():
 
     return None
 
-def start_screego_server(lan_ip):
-    """Spawns the Screego backend binary."""
-    screego_bin = find_or_build_screego()
-
-    if not screego_bin or not os.path.isfile(screego_bin):
-        log("========================================")
-        log("Error: Screego executable binary not found.")
-        log("Please build it once by running: go build -o screego .")
-        log("========================================")
-        sys.exit(1)
-
-    bin_dir = os.path.dirname(os.path.abspath(screego_bin))
-    log(f"Using Screego binary: {screego_bin}")
-    log(f"Working Directory  : {bin_dir}")
-
-    env = os.environ.copy()
-    env["SCREEGO_EXTERNAL_IP"] = lan_ip
-    env["SCREEGO_SERVER_ADDRESS"] = "0.0.0.0:5050"
-    env["SCREEGO_TURN_ADDRESS"] = "0.0.0.0:3478"
-    env["SCREEGO_AUTH_MODE"] = "turn"
-    env["SCREEGO_CLOSE_ROOM_WHEN_OWNER_LEAVES"] = "true"
-    env["SCREEGO_LOG_LEVEL"] = "info"
-    
-    users_candidates = [
-        os.path.join(bin_dir, "users"),
-        os.path.join(BASE_DIR, "users"),
-        os.path.join(BASE_DIR, "server", "users"),
-        os.path.join(os.getcwd(), "users"),
-        os.path.join(os.getcwd(), "server", "users")
-    ]
-    for u_path in users_candidates:
-        if os.path.isfile(u_path):
-            env["SCREEGO_USERS_FILE"] = os.path.abspath(u_path)
-            break
-
-    proc = subprocess.Popen([screego_bin, "serve"], env=env, cwd=bin_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return proc
-
-def wait_for_server(url, timeout=6.0):
-    """Waits until the local Screego HTTP server is responsive before opening browser."""
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            req = urllib.request.Request(url, method="GET")
-            with urllib.request.urlopen(req, timeout=1.0) as resp:
-                if resp.status in (200, 302, 304):
-                    log(f"Screego server is up and responsive at {url}")
-                    return True
-        except Exception:
-            time.sleep(0.2)
-    log(f"Warning: Screego server did not respond at {url} within {timeout} seconds. Proceeding anyway.")
-    return False
-
-def stream_browser_logs(proc):
-    """Reads lines from browser process stderr/stdout and appends them to our log file in real time."""
-    def read_stream(stream, name):
+def stream_process_logs(proc, prefix_label):
+    """Continuously reads stdout and stderr lines from a subprocess and writes them to the log."""
+    def read_stream(stream, stream_name):
         try:
             for line in iter(stream.readline, ''):
                 if line:
-                    log(f"[Browser {name}] {line.strip()}")
+                    log(f"[{prefix_label} {stream_name}] {line.strip()}")
         except Exception:
             pass
         finally:
@@ -399,6 +350,77 @@ def stream_browser_logs(proc):
         threading.Thread(target=read_stream, args=(proc.stdout, "stdout"), daemon=True).start()
     if proc.stderr:
         threading.Thread(target=read_stream, args=(proc.stderr, "stderr"), daemon=True).start()
+
+def start_screego_server(lan_ip):
+    """Spawns the Go backend binary, exporting both SCREEGO_* and SCREENSHARE_* variables."""
+    server_bin = find_or_build_binary()
+
+    if not server_bin or not os.path.isfile(server_bin):
+        log("========================================")
+        log("Error: Server executable binary not found.")
+        log("Please build it once by running: go build -o ScreenShare .")
+        log("========================================")
+        sys.exit(1)
+
+    bin_dir = os.path.dirname(os.path.abspath(server_bin))
+    log(f"Using server binary: {server_bin}")
+    log(f"Working Directory  : {bin_dir}")
+
+    env = os.environ.copy()
+    
+    # Export BOTH prefixes so whichever config parser is in Go, it finds its variables
+    configs = {
+        "EXTERNAL_IP": lan_ip,
+        "SERVER_ADDRESS": "0.0.0.0:5050",
+        "TURN_ADDRESS": "0.0.0.0:3478",
+        "AUTH_MODE": "turn",
+        "CLOSE_ROOM_WHEN_OWNER_LEAVES": "true",
+        "LOG_LEVEL": "info",
+    }
+    for k, v in configs.items():
+        env[f"SCREEGO_{k}"] = v
+        env[f"SCREENSHARE_{k}"] = v
+    
+    users_candidates = [
+        os.path.join(bin_dir, "users"),
+        os.path.join(BASE_DIR, "users"),
+        os.path.join(BASE_DIR, "server", "users"),
+        os.path.join(os.getcwd(), "users"),
+        os.path.join(os.getcwd(), "server", "users")
+    ]
+    for u_path in users_candidates:
+        if os.path.isfile(u_path):
+            abs_u = os.path.abspath(u_path)
+            env["SCREEGO_USERS_FILE"] = abs_u
+            env["SCREENSHARE_USERS_FILE"] = abs_u
+            break
+
+    proc = subprocess.Popen(
+        [server_bin, "serve"],
+        env=env,
+        cwd=bin_dir,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1
+    )
+    stream_process_logs(proc, "Server")
+    return proc
+
+def wait_for_server(url, timeout=6.0):
+    """Waits until the local HTTP server is responsive before opening browser."""
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=1.0) as resp:
+                if resp.status in (200, 302, 304):
+                    log(f"Backend server is up and responsive at {url}")
+                    return True
+        except Exception:
+            time.sleep(0.2)
+    log(f"Warning: Backend server did not respond at {url} within {timeout} seconds. Proceeding anyway.")
+    return False
 
 def find_browser_executable():
     """Searches for Microsoft Edge, Chrome, or Chromium across host paths, Snaps, and Flatpaks."""
@@ -430,20 +452,17 @@ def find_browser_executable():
 
     log("Scanning host for browser binaries...")
     for binary in search_binaries:
-        # Standard PATH lookup
         path = shutil.which(binary)
         if path and os.path.isfile(path) and os.access(path, os.X_OK):
             log(f"Found executable browser in PATH: '{binary}' -> '{path}'")
             return [path]
         
-        # Explicit directories lookup (helps when running inside AppImage with trimmed PATH)
         for d in explicit_dirs:
             full_path = os.path.join(d, binary)
             if os.path.isfile(full_path) and os.access(full_path, os.X_OK):
                 log(f"Found executable browser in '{d}': '{full_path}'")
                 return [full_path]
 
-    # Flatpak Application IDs lookup
     flatpak_bin = shutil.which("flatpak") or "/usr/bin/flatpak"
     if os.path.isfile(flatpak_bin) and os.access(flatpak_bin, os.X_OK):
         for app_id in ["com.microsoft.Edge", "com.google.Chrome", "org.chromium.Chromium", "com.brave.Browser"]:
@@ -455,7 +474,7 @@ def find_browser_executable():
     return None
 
 def launch_hidden_browser(url):
-    """Finds and launches Edge/Chromium on host system in an isolated profile with clean environment."""
+    """Finds and launches Edge/Chromium on host system with Vulkan disabled for Wayland stability."""
     executable_cmd = find_browser_executable()
 
     if not executable_cmd:
@@ -466,19 +485,20 @@ def launch_hidden_browser(url):
         log("========================================================================")
         return None
 
-    # Dedicated user-data-dir ensures Edge creates a standalone instance instead of connecting to a running background instance
-    isolated_profile_dir = os.path.join(tempfile.gettempdir(), "screego_browser_profile")
+    # Dedicated user-data-dir ensures browser creates an isolated instance
+    isolated_profile_dir = os.path.join(tempfile.gettempdir(), "ScreenShare_browser_profile")
     os.makedirs(isolated_profile_dir, exist_ok=True)
 
     cmd = executable_cmd + [
         f"--app={url}",
         f"--user-data-dir={isolated_profile_dir}",
+        "--test-type",
         "--no-sandbox",
-        "--disable-gpu-sandbox",
         "--disable-dev-shm-usage",
+        "--disable-vulkan",
         "--ozone-platform-hint=auto",
         "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization",
-        "--disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process",
+        "--disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan",
         "--use-fake-ui-for-media-stream",
         "--auto-select-desktop-capture-source=Entire screen",
         "--enable-usermedia-screen-capturing",
@@ -514,7 +534,7 @@ def launch_hidden_browser(url):
             text=True,
             bufsize=1
         )
-        stream_browser_logs(proc)
+        stream_process_logs(proc, "Browser")
 
         def check_browser_health():
             time.sleep(3.0)
@@ -642,7 +662,7 @@ class OverlayToolbar(QWidget):
 
         self.indicator = InteractiveIndicator("●", self.container)
         self.indicator.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.indicator.setToolTip(f"Screego running on http://{self.lan_ip}:5050\nClick to collapse/expand\nLog: {LOG_FILE_PATH}")
+        self.indicator.setToolTip(f"ScreenShare running on http://{self.lan_ip}:5050\nClick to collapse/expand\nLog: {LOG_FILE_PATH}")
         self.set_indicator_color("#b8bb26")
         self.indicator.clicked.connect(self.toggle_collapse)
         container_layout.addWidget(self.indicator)
@@ -734,7 +754,7 @@ class OverlayToolbar(QWidget):
 
 if __name__ == '__main__':
     log("=================================================================")
-    log(" Screego Host Starting")
+    log(" ScreenShare Host Starting")
     log(f" Execution Working Dir : {EXECUTION_DIR}")
     log(f" Log File Location     : {LOG_FILE_PATH}")
     log(f" Python sys.executable : {sys.executable}")
@@ -750,9 +770,9 @@ if __name__ == '__main__':
 
     setup_pipewire_audio()
 
-    screego_proc = start_screego_server(lan_ip)
+    server_proc = start_screego_server(lan_ip)
     
-    # Wait until Screego backend is ready to accept HTTP connections
+    # Wait until backend is ready to accept HTTP connections
     wait_for_server(f"http://127.0.0.1:5050/health", timeout=6.0)
 
     http_thread = threading.Thread(target=run_http_server, daemon=True)
@@ -775,15 +795,15 @@ if __name__ == '__main__':
             except Exception:
                 browser_proc.kill()
 
-        if screego_proc:
-            screego_proc.terminate()
+        if server_proc:
+            server_proc.terminate()
             try:
-                screego_proc.wait(timeout=2)
+                server_proc.wait(timeout=2)
             except Exception:
-                screego_proc.kill()
+                server_proc.kill()
 
         cleanup_audio()
-        log("Cleanup finished. Screego Host terminated.")
+        log("Cleanup finished. ScreenShare Host terminated.")
 
     app.aboutToQuit.connect(cleanup)
     sys.exit(app.exec())

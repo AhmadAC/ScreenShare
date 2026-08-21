@@ -1,5 +1,5 @@
-SCREEGO_SECRET=secure
-SCREEGO_LOG_LEVEL=debug
-SCREEGO_CORS_ALLOWED_ORIGINS=http://localhost:3000
-SCREEGO_USERS_FILE=./users
-SCREEGO_TURN_DENY_PEERS=
+ScreenShare_SECRET=secure
+ScreenShare_LOG_LEVEL=debug
+ScreenShare_CORS_ALLOWED_ORIGINS=http://localhost:3000
+ScreenShare_USERS_FILE=./users
+ScreenShare_TURN_DENY_PEERS=

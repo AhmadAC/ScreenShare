@@ -5,4 +5,4 @@
 * [Reverse Proxy](proxy.md)
 * [Development](development.md)
 * [FAQ](faq.md)
-* [GitHub](https://github.com/screego/server)
+* [GitHub](https://github.com/ScreenShare/server)

@@ -1,0 +1,28 @@
+[2026-08-21 14:06:20] =================================================================
+[2026-08-21 14:06:20]  ScreenShare Host Starting
+[2026-08-21 14:06:20]  Execution Working Dir : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:06:20]  Log File Location     : /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare-host.log
+[2026-08-21 14:06:20]  Python sys.executable : /usr/bin/python
+[2026-08-21 14:06:20]  Frozen bundle status  : False
+[2026-08-21 14:06:20] =================================================================
+[2026-08-21 14:06:21]  Detected Local IP     : 192.168.31.40
+[2026-08-21 14:06:21]  Viewers URL           : http://192.168.31.40:5050
+[2026-08-21 14:06:21] Audio setup: Loaded module-remap-source (VirtualMic)
+[2026-08-21 14:06:21] Using ScreenShare binary: /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare
+[2026-08-21 14:06:21] Working Directory  : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:06:21] ScreenShare server is up and responsive at http://127.0.0.1:5050/health
+[2026-08-21 14:06:21] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-08-21 14:06:21] Scanning host for browser binaries...
+[2026-08-21 14:06:22] Found candidate browser in Flatpak: 'com.microsoft.Edge'
+[2026-08-21 14:06:22] =================================================================
+[2026-08-21 14:06:22]  Launching Browser Subprocess
+[2026-08-21 14:06:22]  Command         : /usr/bin/flatpak run com.microsoft.Edge --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=/tmp/ScreenShare_browser_profile --no-sandbox --disable-gpu-sandbox --disable-dev-shm-usage --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process --use-fake-ui-for-media-stream --auto-select-desktop-capture-source=Entire screen --enable-usermedia-screen-capturing --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-08-21 14:06:22]  Profile Dir     : /tmp/ScreenShare_browser_profile
+[2026-08-21 14:06:22]  DISPLAY         : :0
+[2026-08-21 14:06:22]  WAYLAND_DISPLAY : wayland-0
+[2026-08-21 14:06:22]  XDG_DATA_DIRS   : /var/home/steam/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+[2026-08-21 14:06:22] =================================================================
+[2026-08-21 14:06:25] Browser process is active and running normally.
+[2026-08-21 14:06:28] [Browser stderr] [55:55:0821/140628.142892:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:249] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
+[2026-08-21 14:07:43] Application shutdown initiated. Cleaning up subprocesses...
+[2026-08-21 14:07:43] Cleanup finished. ScreenShare Host terminated.

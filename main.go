@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/screego/server/cmd"
-	pmode "github.com/screego/server/config/mode"
+	"github.com/ScreenShare/server/cmd"
+	pmode "github.com/ScreenShare/server/config/mode"
 )
 
 var (

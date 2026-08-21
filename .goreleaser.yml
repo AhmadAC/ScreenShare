@@ -1,6 +1,6 @@
 # This is an example goreleaser.yaml file with some sane defaults.
 # Make sure to check the documentation at http://goreleaser.com
-project_name: screego
+project_name: ScreenShare
 version: 2
 before:
   hooks:
@@ -40,7 +40,7 @@ archives:
   - files:
       - LICENSE
       - README.md
-      - screego.config.example
+      - ScreenShare.config.example
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{- if eq .Arch "386" }}i386{{- else }}{{ .Arch }}{{ end }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
     format_overrides:
       - goos: windows
@@ -55,12 +55,12 @@ dockers:
     goarch: amd64
     goarm: ""
     image_templates:
-      - "screego/server:amd64-unstable"
-      - "screego/server:amd64-{{ .RawVersion }}"
-      - "screego/server:amd64-{{ .Major }}"
-      - "ghcr.io/screego/server:amd64-unstable"
-      - "ghcr.io/screego/server:amd64-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:amd64-{{ .Major }}"
+      - "ScreenShare/server:amd64-unstable"
+      - "ScreenShare/server:amd64-{{ .RawVersion }}"
+      - "ScreenShare/server:amd64-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:amd64-unstable"
+      - "ghcr.io/ScreenShare/server:amd64-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:amd64-{{ .Major }}"
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/amd64"
@@ -73,12 +73,12 @@ dockers:
     goarch: "386"
     goarm: ""
     image_templates:
-      - "screego/server:386-unstable"
-      - "screego/server:386-{{ .RawVersion }}"
-      - "screego/server:386-{{ .Major }}"
-      - "ghcr.io/screego/server:386-unstable"
-      - "ghcr.io/screego/server:386-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:386-{{ .Major }}"
+      - "ScreenShare/server:386-unstable"
+      - "ScreenShare/server:386-{{ .RawVersion }}"
+      - "ScreenShare/server:386-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:386-unstable"
+      - "ghcr.io/ScreenShare/server:386-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:386-{{ .Major }}"
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/386"
@@ -91,12 +91,12 @@ dockers:
     goarch: arm64
     goarm: ""
     image_templates:
-      - "screego/server:arm64-unstable"
-      - "screego/server:arm64-{{ .RawVersion }}"
-      - "screego/server:arm64-{{ .Major }}"
-      - "ghcr.io/screego/server:arm64-unstable"
-      - "ghcr.io/screego/server:arm64-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:arm64-{{ .Major }}"
+      - "ScreenShare/server:arm64-unstable"
+      - "ScreenShare/server:arm64-{{ .RawVersion }}"
+      - "ScreenShare/server:arm64-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:arm64-unstable"
+      - "ghcr.io/ScreenShare/server:arm64-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:arm64-{{ .Major }}"
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/arm64"
@@ -109,12 +109,12 @@ dockers:
     goarch: arm
     goarm: 7
     image_templates:
-      - "screego/server:armv7-unstable"
-      - "screego/server:armv7-{{ .RawVersion }}"
-      - "screego/server:armv7-{{ .Major }}"
-      - "ghcr.io/screego/server:armv7-unstable"
-      - "ghcr.io/screego/server:armv7-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:armv7-{{ .Major }}"
+      - "ScreenShare/server:armv7-unstable"
+      - "ScreenShare/server:armv7-{{ .RawVersion }}"
+      - "ScreenShare/server:armv7-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:armv7-unstable"
+      - "ghcr.io/ScreenShare/server:armv7-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:armv7-{{ .Major }}"
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/arm/v7"
@@ -127,12 +127,12 @@ dockers:
     goarch: arm
     goarm: 6
     image_templates:
-      - "screego/server:armv6-unstable"
-      - "screego/server:armv6-{{ .RawVersion }}"
-      - "screego/server:armv6-{{ .Major }}"
-      - "ghcr.io/screego/server:armv6-unstable"
-      - "ghcr.io/screego/server:armv6-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:armv6-{{ .Major }}"
+      - "ScreenShare/server:armv6-unstable"
+      - "ScreenShare/server:armv6-{{ .RawVersion }}"
+      - "ScreenShare/server:armv6-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:armv6-unstable"
+      - "ghcr.io/ScreenShare/server:armv6-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:armv6-{{ .Major }}"
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/arm/v6"
@@ -145,12 +145,12 @@ dockers:
     goarch: ppc64le
     goarm: ""
     image_templates:
-      - "screego/server:ppc64le-unstable"
-      - "screego/server:ppc64le-{{ .RawVersion }}"
-      - "screego/server:ppc64le-{{ .Major }}"
-      - "ghcr.io/screego/server:ppc64le-unstable"
-      - "ghcr.io/screego/server:ppc64le-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:ppc64le-{{ .Major }}"
+      - "ScreenShare/server:ppc64le-unstable"
+      - "ScreenShare/server:ppc64le-{{ .RawVersion }}"
+      - "ScreenShare/server:ppc64le-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:ppc64le-unstable"
+      - "ghcr.io/ScreenShare/server:ppc64le-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:ppc64le-{{ .Major }}"
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/ppc64le"
@@ -163,12 +163,12 @@ dockers:
     goarch: riscv64
     goarm: ""
     image_templates:
-      - "screego/server:riscv64-unstable"
-      - "screego/server:riscv64-{{ .RawVersion }}"
-      - "screego/server:riscv64-{{ .Major }}"
-      - "ghcr.io/screego/server:riscv64-unstable"
-      - "ghcr.io/screego/server:riscv64-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:riscv64-{{ .Major }}"
+      - "ScreenShare/server:riscv64-unstable"
+      - "ScreenShare/server:riscv64-{{ .RawVersion }}"
+      - "ScreenShare/server:riscv64-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:riscv64-unstable"
+      - "ghcr.io/ScreenShare/server:riscv64-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:riscv64-{{ .Major }}"
     dockerfile: Dockerfile
     build_flag_templates:
       - "--platform=linux/riscv64"
@@ -177,57 +177,57 @@ dockers:
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
 docker_manifests:
-  - name_template: "ghcr.io/screego/server:unstable"
+  - name_template: "ghcr.io/ScreenShare/server:unstable"
     image_templates:
-      - "ghcr.io/screego/server:amd64-unstable"
-      - "ghcr.io/screego/server:386-unstable"
-      - "ghcr.io/screego/server:arm64-unstable"
-      - "ghcr.io/screego/server:armv7-unstable"
-      - "ghcr.io/screego/server:armv6-unstable"
-      - "ghcr.io/screego/server:ppc64le-unstable"
-      - "ghcr.io/screego/server:riscv64-unstable"
-  - name_template: "screego/server:unstable"
+      - "ghcr.io/ScreenShare/server:amd64-unstable"
+      - "ghcr.io/ScreenShare/server:386-unstable"
+      - "ghcr.io/ScreenShare/server:arm64-unstable"
+      - "ghcr.io/ScreenShare/server:armv7-unstable"
+      - "ghcr.io/ScreenShare/server:armv6-unstable"
+      - "ghcr.io/ScreenShare/server:ppc64le-unstable"
+      - "ghcr.io/ScreenShare/server:riscv64-unstable"
+  - name_template: "ScreenShare/server:unstable"
     image_templates:
-      - "screego/server:amd64-unstable"
-      - "screego/server:386-unstable"
-      - "screego/server:arm64-unstable"
-      - "screego/server:armv7-unstable"
-      - "screego/server:armv6-unstable"
-      - "screego/server:ppc64le-unstable"
-      - "screego/server:riscv64-unstable"
-  - name_template: "screego/server:{{ .RawVersion }}"
+      - "ScreenShare/server:amd64-unstable"
+      - "ScreenShare/server:386-unstable"
+      - "ScreenShare/server:arm64-unstable"
+      - "ScreenShare/server:armv7-unstable"
+      - "ScreenShare/server:armv6-unstable"
+      - "ScreenShare/server:ppc64le-unstable"
+      - "ScreenShare/server:riscv64-unstable"
+  - name_template: "ScreenShare/server:{{ .RawVersion }}"
     image_templates:
-      - "screego/server:amd64-{{ .RawVersion }}"
-      - "screego/server:386-{{ .RawVersion }}"
-      - "screego/server:arm64-{{ .RawVersion }}"
-      - "screego/server:armv7-{{ .RawVersion }}"
-      - "screego/server:armv6-{{ .RawVersion }}"
-      - "screego/server:ppc64le-{{ .RawVersion }}"
-      - "screego/server:riscv64-{{ .RawVersion }}"
-  - name_template: "ghcr.io/screego/server:{{ .RawVersion }}"
+      - "ScreenShare/server:amd64-{{ .RawVersion }}"
+      - "ScreenShare/server:386-{{ .RawVersion }}"
+      - "ScreenShare/server:arm64-{{ .RawVersion }}"
+      - "ScreenShare/server:armv7-{{ .RawVersion }}"
+      - "ScreenShare/server:armv6-{{ .RawVersion }}"
+      - "ScreenShare/server:ppc64le-{{ .RawVersion }}"
+      - "ScreenShare/server:riscv64-{{ .RawVersion }}"
+  - name_template: "ghcr.io/ScreenShare/server:{{ .RawVersion }}"
     image_templates:
-      - "ghcr.io/screego/server:amd64-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:386-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:arm64-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:armv7-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:armv6-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:ppc64le-{{ .RawVersion }}"
-      - "ghcr.io/screego/server:riscv64-{{ .RawVersion }}"
-  - name_template: "screego/server:{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:amd64-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:386-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:arm64-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:armv7-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:armv6-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:ppc64le-{{ .RawVersion }}"
+      - "ghcr.io/ScreenShare/server:riscv64-{{ .RawVersion }}"
+  - name_template: "ScreenShare/server:{{ .Major }}"
     image_templates:
-      - "screego/server:amd64-{{ .Major }}"
-      - "screego/server:386-{{ .Major }}"
-      - "screego/server:arm64-{{ .Major }}"
-      - "screego/server:armv7-{{ .Major }}"
-      - "screego/server:armv6-{{ .Major }}"
-      - "screego/server:ppc64le-{{ .Major }}"
-      - "screego/server:riscv64-{{ .Major }}"
-  - name_template: "ghcr.io/screego/server:{{ .Major }}"
+      - "ScreenShare/server:amd64-{{ .Major }}"
+      - "ScreenShare/server:386-{{ .Major }}"
+      - "ScreenShare/server:arm64-{{ .Major }}"
+      - "ScreenShare/server:armv7-{{ .Major }}"
+      - "ScreenShare/server:armv6-{{ .Major }}"
+      - "ScreenShare/server:ppc64le-{{ .Major }}"
+      - "ScreenShare/server:riscv64-{{ .Major }}"
+  - name_template: "ghcr.io/ScreenShare/server:{{ .Major }}"
     image_templates:
-      - "ghcr.io/screego/server:amd64-{{ .Major }}"
-      - "ghcr.io/screego/server:386-{{ .Major }}"
-      - "ghcr.io/screego/server:arm64-{{ .Major }}"
-      - "ghcr.io/screego/server:armv7-{{ .Major }}"
-      - "ghcr.io/screego/server:armv6-{{ .Major }}"
-      - "ghcr.io/screego/server:ppc64le-{{ .Major }}"
-      - "ghcr.io/screego/server:riscv64-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:amd64-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:386-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:arm64-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:armv7-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:armv6-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:ppc64le-{{ .Major }}"
+      - "ghcr.io/ScreenShare/server:riscv64-{{ .Major }}"
