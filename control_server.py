@@ -31,6 +31,21 @@ def get_base_dir():
 
 BASE_DIR = get_base_dir()
 
+def get_clean_host_env():
+    """Strips AppImage and PyInstaller specific variables so host processes don't crash on library conflicts."""
+    env = os.environ.copy()
+    vars_to_remove = [
+        "LD_LIBRARY_PATH",
+        "LD_PRELOAD",
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "QT_PLUGIN_PATH",
+        "QML2_IMPORT_PATH"
+    ]
+    for var in vars_to_remove:
+        env.pop(var, None)
+    return env
+
 def detect_lan_ip():
     """Automatically detects the real Wi-Fi / Ethernet IPv4 address, filtering out virtual/TUN/198.18.x subnets."""
     try:
@@ -308,22 +323,40 @@ def start_screego_server(lan_ip):
     return proc
 
 def launch_hidden_browser(url):
-    """Finds and launches Edge/Chromium on host system for headless screen sharing."""
+    """Finds and launches Edge/Chromium on host system with clean environment."""
     executable_cmd = []
 
-    for binary in ["microsoft-edge-stable", "microsoft-edge", "google-chrome-stable", "google-chrome", "chromium"]:
+    search_binaries = [
+        "microsoft-edge-stable",
+        "microsoft-edge",
+        "google-chrome-stable",
+        "google-chrome",
+        "chromium",
+        "chromium-browser",
+        "brave-browser",
+        "brave",
+        "vivaldi",
+        "microsoft-edge-beta",
+        "microsoft-edge-dev",
+        "google-chrome-beta",
+        "google-chrome-unstable"
+    ]
+
+    for binary in search_binaries:
         path = shutil.which(binary)
         if path:
             executable_cmd = [path]
             break
 
     if not executable_cmd and shutil.which("flatpak"):
-        res = subprocess.run(["flatpak", "info", "com.microsoft.Edge"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if res.returncode == 0:
-            executable_cmd = ["flatpak", "run", "com.microsoft.Edge"]
+        for app_id in ["com.microsoft.Edge", "com.google.Chrome", "org.chromium.Chromium", "com.brave.Browser"]:
+            res = subprocess.run(["flatpak", "info", app_id], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if res.returncode == 0:
+                executable_cmd = ["flatpak", "run", app_id]
+                break
 
     if not executable_cmd:
-        print("Warning: No compatible Chromium or Edge browser found.")
+        print("Warning: No compatible Chromium or Edge browser found on host system.")
         return None
 
     cmd = executable_cmd + [
@@ -338,8 +371,6 @@ def launch_hidden_browser(url):
         "--enable-gpu-rasterization",
         "--enable-zero-copy",
         "--autoplay-policy=no-user-gesture-required",
-        "--window-position=9999,9999",
-        "--window-size=200,200",
         "--no-first-run",
         "--no-default-browser-check",
         "--disable-logging",
@@ -347,7 +378,10 @@ def launch_hidden_browser(url):
         "--disable-breakpad",
         "--disable-component-update"
     ]
-    return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    clean_env = get_clean_host_env()
+    print(f"Launching browser command: {' '.join(cmd)}")
+    return subprocess.Popen(cmd, env=clean_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 class InteractiveIndicator(QLabel):
     clicked = Signal()
