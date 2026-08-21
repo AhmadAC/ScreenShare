@@ -20,6 +20,7 @@ export const useConfig = (): UseConfig => {
         version: 'unknown',
         roomName: 'unknown',
         closeRoomWhenOwnerLeaves: true,
+        externalIP: '',
     });
 
     const refetch = React.useCallback(async () => {

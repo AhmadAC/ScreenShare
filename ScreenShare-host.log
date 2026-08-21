@@ -93,3 +93,36 @@
 [2026-08-21 14:15:38] [Browser stderr] [2 preload-host-spawn-strategy] Dropping 0xc50000600b0 (3) because of connection closed
 [2026-08-21 14:15:38] [Server stdout] [90m2026-08-21T14:15:38+08:00[0m [32mINF[0m [1mReceived interrupt. Shutting down...[0m
 [2026-08-21 14:15:38] [Browser stderr] [0821/141538.706746:ERROR:third_party/crashpad/crashpad/util/linux/scoped_ptrace_attach.cc:27] ptrace: Operation not permitted (1)
+[2026-08-21 14:19:51] =================================================================
+[2026-08-21 14:19:51]  ScreenShare Host Starting
+[2026-08-21 14:19:51]  Execution Working Dir : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:19:51]  Log File Location     : /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare-host.log
+[2026-08-21 14:19:51]  Python sys.executable : /usr/bin/python
+[2026-08-21 14:19:51]  Frozen bundle status  : False
+[2026-08-21 14:19:51] =================================================================
+[2026-08-21 14:19:51]  Detected Local IP     : 192.168.31.40
+[2026-08-21 14:19:51]  Viewers URL           : http://192.168.31.40:5050
+[2026-08-21 14:19:51] Audio setup: Loaded module-remap-source (VirtualMic)
+[2026-08-21 14:19:51] Using server binary: /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare
+[2026-08-21 14:19:51] Working Directory  : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:19:51] [Server stdout] [90m2026-08-21T14:19:51+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-08-21 14:19:51] [Server stdout] [90m2026-08-21T14:19:51+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-08-21 14:19:51] [Server stdout] [90m2026-08-21T14:19:51+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-08-21 14:19:51] [Server stdout] [90m2026-08-21T14:19:51+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-08-21 14:19:51] [Server stdout] [90m2026-08-21T14:19:51+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-08-21 14:19:52] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-08-21 14:19:52] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-08-21 14:19:52] Scanning host for browser binaries...
+[2026-08-21 14:19:52] Found candidate browser in Flatpak: 'com.microsoft.Edge'
+[2026-08-21 14:19:52] =================================================================
+[2026-08-21 14:19:52]  Launching Browser Subprocess
+[2026-08-21 14:19:52]  Command         : /usr/bin/flatpak run com.microsoft.Edge --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=/tmp/ScreenShare_browser_profile --test-type --no-sandbox --disable-dev-shm-usage --disable-vulkan --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan --use-fake-ui-for-media-stream --auto-select-desktop-capture-source=Entire screen --enable-usermedia-screen-capturing --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-08-21 14:19:52]  Profile Dir     : /tmp/ScreenShare_browser_profile
+[2026-08-21 14:19:52]  DISPLAY         : :0
+[2026-08-21 14:19:52]  WAYLAND_DISPLAY : wayland-0
+[2026-08-21 14:19:52]  XDG_DATA_DIRS   : /var/home/steam/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+[2026-08-21 14:19:52] =================================================================
+[2026-08-21 14:19:55] Browser process is active and running normally.
+[2026-08-21 14:19:56] [Browser stderr] [58:58:0821/141956.393179:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:249] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
+[2026-08-21 14:21:19] Application shutdown initiated. Cleaning up subprocesses...
+[2026-08-21 14:21:20] Cleanup finished. ScreenShare Host terminated.

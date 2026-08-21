@@ -10,10 +10,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
-	"github.com/ScreenShare/server/auth"
-	"github.com/ScreenShare/server/config"
-	"github.com/ScreenShare/server/ui"
-	"github.com/ScreenShare/server/ws"
+	"github.com/screego/server/auth"
+	"github.com/screego/server/config"
+	"github.com/screego/server/ui"
+	"github.com/screego/server/ws"
 )
 
 type Health struct {
@@ -29,6 +29,7 @@ type UIConfig struct {
 	Version                  string `json:"version"`
 	RoomName                 string `json:"roomName"`
 	CloseRoomWhenOwnerLeaves bool   `json:"closeRoomWhenOwnerLeaves"`
+	ExternalIP               string `json:"externalIP,omitempty"`
 }
 
 func Router(conf config.Config, rooms *ws.Rooms, users *auth.Users, version string) *mux.Router {
@@ -44,6 +45,12 @@ func Router(conf config.Config, rooms *ws.Rooms, users *auth.Users, version stri
 	router.Methods("POST").Path("/logout").HandlerFunc(users.Logout)
 	router.Methods("GET").Path("/config").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, loggedIn := users.CurrentUser(r)
+		extIP := ""
+		if conf.TurnIPProvider != nil {
+			if v4, _, _ := conf.TurnIPProvider.Get(); v4 != nil {
+				extIP = v4.String()
+			}
+		}
 		_ = json.NewEncoder(w).Encode(&UIConfig{
 			AuthMode:                 conf.AuthMode,
 			LoggedIn:                 loggedIn,
@@ -51,6 +58,7 @@ func Router(conf config.Config, rooms *ws.Rooms, users *auth.Users, version stri
 			Version:                  version,
 			RoomName:                 rooms.RandRoomName(),
 			CloseRoomWhenOwnerLeaves: conf.CloseRoomWhenOwnerLeaves,
+			ExternalIP:               extIP,
 		})
 	})
 	router.Methods("GET").Path("/health").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +100,7 @@ func basicAuth(handler http.Handler, users *auth.Users) http.HandlerFunc {
 		user, pass, ok := r.BasicAuth()
 
 		if !ok || !users.Validate(user, pass) {
-			w.Header().Set("WWW-Authenticate", `Basic realm="ScreenShare"`)
+			w.Header().Set("WWW-Authenticate", `Basic realm="screego"`)
 			w.WriteHeader(401)
 			_, _ = w.Write([]byte("Unauthorized.\n"))
 			return

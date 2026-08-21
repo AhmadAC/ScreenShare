@@ -12,6 +12,7 @@ export interface UIConfig {
     version: string;
     roomName: string;
     closeRoomWhenOwnerLeaves: boolean;
+    externalIP?: string;
 }
 
 export interface RoomConfiguration {

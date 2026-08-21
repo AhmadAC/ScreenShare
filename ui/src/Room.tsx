@@ -19,6 +19,8 @@ import {useSnackbar} from 'notistack';
 import {RoomUser} from './message';
 import {useSettings, VideoDisplayMode} from './settings';
 import {SettingDialog} from './SettingDialog';
+import {UseConfig} from './useConfig';
+import {QRCodeCanvas} from './QRCode';
 
 const HostStream: unique symbol = Symbol('mystream');
 
@@ -59,12 +61,14 @@ const requestFullscreen = (element: FullScreenHTMLVideoElement | null) => {
 
 export const Room = ({
     state,
+    config,
     share,
     stopShare,
     setName,
     togglePause,
 }: {
     state: ConnectedRoom;
+    config?: UseConfig;
     share: () => void;
     stopShare: () => void;
     setName: (name: string) => void;
@@ -141,9 +145,17 @@ export const Room = ({
         }
     };
 
+    // Calculate the accurate LAN viewer URL for QR Code and copying
+    const serverHost =
+        (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') && config?.externalIP
+            ? config.externalIP
+            : window.location.hostname;
+    const portStr = window.location.port ? `:${window.location.port}` : '';
+    const viewerJoinUrl = `${window.location.protocol}//${serverHost}${portStr}/?room=${state.id}`;
+
     const copyLink = () => {
-        navigator?.clipboard?.writeText(window.location.href)?.then(
-            () => enqueueSnackbar('Link Copied', {variant: 'success'}),
+        navigator?.clipboard?.writeText(viewerJoinUrl)?.then(
+            () => enqueueSnackbar('Join Link Copied', {variant: 'success'}),
             (err) => enqueueSnackbar('Copy Failed ' + err, {variant: 'error'})
         );
     };
@@ -237,7 +249,7 @@ export const Room = ({
                         if (state.hostStream) stopShare();
                     }
                 })
-                .catch(() => {}); // Fails silently if python helper is not running
+                .catch(() => {});
         }, 300);
 
         return () => clearInterval(interval);
@@ -270,6 +282,19 @@ export const Room = ({
 
     return (
         <div className={classes.videoContainer}>
+            {/* Top-Right QR Code for quick phone scan and join */}
+            <Paper
+                elevation={8}
+                className={classes.qrContainer}
+                onClick={copyLink}
+                title="Click to copy join link"
+            >
+                <QRCodeCanvas text={viewerJoinUrl} size={110} />
+                <Typography variant="caption" className={classes.qrLabel}>
+                    Scan to Join
+                </Typography>
+            </Paper>
+
             {audioBlocked && !isHostSelfStream && (
                 <Paper
                     elevation={10}
@@ -521,7 +546,6 @@ const AudioControl = ({
     video: FullScreenHTMLVideoElement;
     onUnmute?: () => void;
 }) => {
-    // this is used to force a rerender
     const [, setMuted] = React.useState<boolean>();
 
     React.useEffect(() => {
@@ -566,6 +590,31 @@ const AudioControl = ({
 };
 
 const useStyles = makeStyles()(() => ({
+    qrContainer: {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        zIndex: 35,
+        padding: '8px',
+        backgroundColor: '#ffffff',
+        borderRadius: '10px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        cursor: 'pointer',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        transition: 'transform 0.2s ease-in-out',
+        '&:hover': {
+            transform: 'scale(1.05)',
+        },
+    },
+    qrLabel: {
+        color: '#1d2021',
+        fontWeight: 'bold',
+        fontSize: '11px',
+        marginTop: '4px',
+        letterSpacing: '0.5px',
+    },
     bottomContainer: {
         position: 'fixed',
         display: 'flex',
