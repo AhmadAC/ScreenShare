@@ -35,22 +35,11 @@ app_state = {"sharing": False, "paused": False}
 pending_action = None
 
 def run_audio_cmd(args):
-    """Executes pactl commands directly or bridged through flatpak-spawn."""
+    """Executes pactl commands directly."""
     try:
         subprocess.run(args, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
     except Exception:
-        if shutil.which("flatpak-spawn"):
-            try:
-                subprocess.run(["flatpak-spawn", "--host"] + args, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-            except Exception:
-                pass
-
-def setup_virtual_mic():
-    """Ensures the VirtualMic is created, unmuted, and active for the stream."""
-    run_audio_cmd(["pactl", "load-module", "module-remap-source", "source_name=VirtualMic", "master=@DEFAULT_SINK@.monitor", "source_properties=device.description=VirtualMic"])
-    run_audio_cmd(["pactl", "set-default-source", "VirtualMic"])
-    run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "0"])
-    run_audio_cmd(["pactl", "set-source-volume", "VirtualMic", "100%"])
+        pass
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -102,56 +91,33 @@ def run_http_server():
     server.serve_forever()
 
 def launch_hidden_browser(url):
-    """Finds and launches Edge on your host computer system with full audio capture enabled."""
-    setup_virtual_mic()
+    """Finds and launches Edge on your host computer system with native PipeWire audio."""
     executable_cmd = []
 
-    # 1. Check if running inside Toolbx and bridge to Host Edge
-    if shutil.which("flatpak-spawn"):
-        for binary in ["microsoft-edge-stable", "microsoft-edge"]:
-            res = subprocess.run(
-                ["flatpak-spawn", "--host", "which", binary],
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True
-            )
-            if res.returncode == 0 and res.stdout.strip():
-                executable_cmd = ["flatpak-spawn", "--host", res.stdout.strip()]
-                break
+    for binary in ["microsoft-edge-stable", "microsoft-edge"]:
+        path = shutil.which(binary)
+        if path:
+            executable_cmd = [path]
+            break
 
-        if not executable_cmd:
-            res = subprocess.run(
-                ["flatpak-spawn", "--host", "flatpak", "info", "com.microsoft.Edge"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
-            if res.returncode == 0:
-                executable_cmd = ["flatpak-spawn", "--host", "flatpak", "run", "com.microsoft.Edge"]
-
-    # 2. Check if running directly on Host
-    if not executable_cmd:
-        for binary in ["microsoft-edge-stable", "microsoft-edge"]:
-            path = shutil.which(binary)
-            if path:
-                executable_cmd = [path]
-                break
-
-        if not executable_cmd and shutil.which("flatpak"):
-            res = subprocess.run(
-                ["flatpak", "info", "com.microsoft.Edge"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
-            if res.returncode == 0:
-                executable_cmd = ["flatpak", "run", "com.microsoft.Edge"]
+    if not executable_cmd and shutil.which("flatpak"):
+        res = subprocess.run(
+            ["flatpak", "info", "com.microsoft.Edge"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        if res.returncode == 0:
+            executable_cmd = ["flatpak", "run", "com.microsoft.Edge"]
 
     if not executable_cmd:
         print("WARNING: Could not find Microsoft Edge on your computer system.")
         return None
 
-    # Full audio + screen capture flags
+    # Native PipeWire / PulseAudio flags (ALSA flags removed, audio sandbox bypassed)
     cmd = executable_cmd + [
         f"--app={url}",
         "--ozone-platform-hint=auto",
-        "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization,PulseaudioLoopbackForCast",
-        "--alsa-input-device=pulse",
-        "--alsa-output-device=pulse",
+        "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization",
+        "--disable-features=AudioServiceOutOfProcess,AudioServiceSandbox",
         "--use-fake-ui-for-media-stream",
         "--auto-select-desktop-capture-source=Entire screen",
         "--enable-usermedia-screen-capturing",
@@ -173,7 +139,6 @@ def launch_hidden_browser(url):
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-# Interactive indicator that supports clicking to collapse/expand and dragging to move
 class InteractiveIndicator(QLabel):
     clicked = Signal()
 
@@ -189,7 +154,7 @@ class InteractiveIndicator(QLabel):
     def mouseReleaseEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton and self._drag_start_pos:
             moved_dist = (event.globalPosition().toPoint() - self._drag_start_pos).manhattanLength()
-            if moved_dist < 6:  # Pure click, not a drag
+            if moved_dist < 6:
                 self.clicked.emit()
             self._drag_start_pos = None
 
@@ -283,7 +248,6 @@ class OverlayToolbar(QWidget):
         self.btn_mute.clicked.connect(self.toggle_mute)
         container_layout.addWidget(self.btn_mute)
 
-        # Clickable indicator to collapse/expand
         self.indicator = InteractiveIndicator("●", self.container)
         self.indicator.setCursor(Qt.CursorShape.PointingHandCursor)
         self.indicator.setToolTip("Click to collapse/expand toolbar")
@@ -393,9 +357,7 @@ if __name__ == '__main__':
             except Exception:
                 browser_proc.kill()
                 
-        # Safely unload VirtualMic from PipeWire
         run_audio_cmd(["pactl", "unload-module", "module-remap-source"])
-        
         subprocess.run(["pkill", "-f", "go run . serve"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         subprocess.run(["pkill", "-f", "screego"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
         subprocess.run(["pkill", "-f", "start.sh"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)

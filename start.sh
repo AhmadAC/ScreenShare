@@ -1,19 +1,17 @@
-# /home/test/Documents/server/start.sh
 #!/bin/bash
 
 # Navigate to the server directory
 cd /var/mnt/shared-drive/2027/ComputerScripts/server || exit
 
-# =======================================================
-# TOGGLE BUILD OPTION
-# Change BUILD_UI="false" to BUILD_UI="true" to build by default.
-# Or pass flags when running the script:
-#   ./start.sh --build
-#   ./start.sh --no-build
-# =======================================================
+# Ensure Go and Host Python Venv are in PATH
+export PATH="$HOME/.local/go/bin:$HOME/go/bin:$PATH"
+PYTHON_BIN="$HOME/.local/server-venv/bin/python3"
+if [ ! -f "$PYTHON_BIN" ]; then
+    PYTHON_BIN="python3"
+fi
+
 BUILD_UI="${BUILD_UI:-false}"
 
-# Check for command line flags
 for arg in "$@"; do
     case $arg in
         --build|-b|build)
@@ -39,19 +37,16 @@ else
     echo "----------------------------------------"
 fi
 
-# 1. Forcefully kill ONLY the processes holding our specific ports (completely safe for VS Code)
+# 1. Kill processes holding specific ports
 fuser -k 5050/tcp 2>/dev/null
 fuser -k 5055/tcp 2>/dev/null
 fuser -k 3478/tcp 2>/dev/null
 fuser -k 3478/udp 2>/dev/null
-
-# Clean up any leftover background GUI jobs by matching the exact file name
 pkill -f control_server.py 2>/dev/null
 
-# Give the Linux kernel 1.5 seconds to fully release and free up the network ports
 sleep 1.5
 
-# 2. Automatically detect the active Wi-Fi IP address (ignoring proxy/VPN 198.18.x.x and localhost)
+# 2. Automatically detect Wi-Fi IP
 IP=$(ip -4 addr show | grep -v '198.18.' | grep -v '127.0.0.1' | sed -n 's/.*inet \([0-9.]*\)\/.*/\1/p' | head -n 1)
 if [ -z "$IP" ]; then
     IP="127.0.0.1"
@@ -60,45 +55,37 @@ fi
 echo "----------------------------------------"
 echo "Detected Local Wi-Fi IP: $IP"
 
-# 3. Update the config file with the current IP
+# 3. Update screego config
 if [ -f "screego.config" ]; then
-    # Remove existing IP lines to prevent duplicates
     sed -i '/^SCREEGO_EXTERNAL_IP=/d' screego.config
 else
     cp screego.config.example screego.config
 fi
 echo "SCREEGO_EXTERNAL_IP=$IP" >> screego.config
 
-# Set Linux PipeWire default input to System Speaker Monitor (COMPUTER AUDIO ONLY, NO MIC)
+# 4. Create and set PipeWire VirtualMic directly on Host
 DEFAULT_SINK=$(pactl get-default-sink 2>/dev/null)
 if [ -n "$DEFAULT_SINK" ]; then
-    # Unload any previously loaded virtual mic to prevent duplicates
     pactl unload-module module-remap-source 2>/dev/null
-    
     echo "Routing Computer Audio Output (No Mic) -> VirtualMic"
-    # Create a virtual microphone that maps to the speaker monitor so Chromium doesn't filter it out
-    pactl load-module module-remap-source source_name=VirtualMic master=${DEFAULT_SINK}.monitor source_properties=device.description=VirtualMic 2>/dev/null
-    
-    # Force the system to use the new VirtualMic as the default input
-    pactl set-default-source VirtualMic 2>/dev/null || pactl set-default-source "${DEFAULT_SINK}.monitor" 2>/dev/null
+    pactl load-module module-remap-source source_name=VirtualMic master="${DEFAULT_SINK}.monitor" source_properties=device.description=VirtualMic 2>/dev/null
+    pactl set-default-source VirtualMic 2>/dev/null
+    pactl set-source-mute VirtualMic 0 2>/dev/null
+    pactl set-source-volume VirtualMic 100% 2>/dev/null
 fi
 
-# 4. Define the room name
 ROOM_NAME="a"
-
 echo "Room to create: $ROOM_NAME"
 echo "Students can join at: http://$IP:5050"
 echo "----------------------------------------"
 
-# 5. Construct the URL for the auto-created room
 ROOM_URL="http://127.0.0.1:5050/?room=$ROOM_NAME&create=true"
 
-# Wait 2 seconds for the Go server to boot, then start the Python GUI with the URL
-(sleep 2 && python control_server.py "$ROOM_URL") &
+# Launch host python GUI
+(sleep 2 && $PYTHON_BIN control_server.py "$ROOM_URL") &
 SUBSHELL_PID=$!
 
-# Ensure python helper closes if shell is closed
 trap "kill $SUBSHELL_PID 2>/dev/null; pkill -f control_server.py 2>/dev/null" EXIT
 
-# 6. Start the server (blocking command) - 'go run .' runs the package in the current directory
+# Start Go Server natively on host
 go run . serve
