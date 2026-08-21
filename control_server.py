@@ -1,10 +1,11 @@
+import os
 import sys
 import json
-import os
+import time
 import shutil
+import socket
 import subprocess
 import threading
-import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingTCPServer
 
@@ -12,7 +13,6 @@ from socketserver import ThreadingTCPServer
 if "QT_QPA_PLATFORM" not in os.environ:
     os.environ["QT_QPA_PLATFORM"] = "xcb;wayland"
 
-# PySide6 Imports for Overlay Toolbar
 from PySide6.QtCore import Qt, QObject, Signal, QPoint
 from PySide6.QtWidgets import (
     QApplication, QWidget, QHBoxLayout, QPushButton, QLabel, 
@@ -21,25 +21,130 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QColor, QMouseEvent
 
 PORT = 5055
+ROOM_NAME = "a"
 
-SCREEGO_URL = "http://127.0.0.1:5050/?room=a&create=true"
-if len(sys.argv) > 1 and sys.argv[1].startswith("http"):
-    SCREEGO_URL = sys.argv[1]
+def get_base_dir():
+    """Returns the base directory whether running as script or frozen PyInstaller binary."""
+    if getattr(sys, 'frozen', False):
+        return getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+BASE_DIR = get_base_dir()
+
+def detect_lan_ip():
+    """Automatically detects the real Wi-Fi / Ethernet IPv4 address, filtering out virtual/TUN/198.18.x subnets."""
+    try:
+        res = subprocess.run(["ip", "-4", "-o", "addr", "show"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        candidates = []
+        for line in res.stdout.strip().split("\n"):
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) >= 4:
+                ifname = parts[1]
+                ip_cidr = parts[3]
+                ip = ip_cidr.split("/")[0]
+                
+                # Exclude loopback, link-local, and VPN / Proxy TUN subnets (such as 198.18.x.x)
+                if ip.startswith("127.") or ip.startswith("198.18.") or ip.startswith("169.254."):
+                    continue
+                if any(ifname.startswith(p) for p in ["lo", "docker", "veth", "br-", "tun", "tap", "wg", "tailscale"]):
+                    continue
+                candidates.append((ifname, ip))
+
+        # Prioritize wireless (wl*) and ethernet (eth*, en*)
+        for ifname, ip in candidates:
+            if ifname.startswith("wl") or ifname.startswith("eth") or ifname.startswith("en"):
+                return ip
+        if candidates:
+            return candidates[0][1]
+    except Exception:
+        pass
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("1.1.1.1", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        if not ip.startswith("198.18.") and not ip.startswith("127."):
+            return ip
+    except Exception:
+        pass
+
+    return "127.0.0.1"
+
+def kill_port_owners():
+    """Terminates any stale processes using Screego/Control ports."""
+    ports = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
+    for port in ports:
+        subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+def run_audio_cmd(args):
+    """Executes pactl commands directly."""
+    try:
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
+original_default_source = None
+remap_module_id = None
+active_audio_source_name = None
+
+def setup_pipewire_audio():
+    """
+    Multi-tiered audio capture solution compatible with PulseAudio and PipeWire.
+    Tier 1: Attempts to create an isolated VirtualMic using module-remap-source from default sink monitor.
+    Tier 2: If dynamic module loading is disabled, directly switches the default audio source to the active monitor source.
+    """
+    global original_default_source, remap_module_id, active_audio_source_name
+    try:
+        res_src = subprocess.run(["pactl", "get-default-source"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        original_default_source = res_src.stdout.strip()
+
+        res_sink = subprocess.run(["pactl", "get-default-sink"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        default_sink = res_sink.stdout.strip()
+        if not default_sink:
+            return
+
+        monitor_source = f"{default_sink}.monitor"
+
+        load_res = subprocess.run([
+            "pactl", "load-module", "module-remap-source",
+            "source_name=VirtualMic",
+            f"master={monitor_source}",
+            "source_properties=device.description=VirtualMic"
+        ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+
+        if load_res.returncode == 0 and load_res.stdout.strip().isdigit():
+            remap_module_id = load_res.stdout.strip()
+            active_audio_source_name = "VirtualMic"
+            run_audio_cmd(["pactl", "set-default-source", "VirtualMic"])
+            run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "0"])
+            run_audio_cmd(["pactl", "set-source-volume", "VirtualMic", "100%"])
+        else:
+            active_audio_source_name = monitor_source
+            run_audio_cmd(["pactl", "set-default-source", monitor_source])
+            run_audio_cmd(["pactl", "set-source-mute", monitor_source, "0"])
+    except Exception as e:
+        print(f"Warning: Audio setup encountered: {e}")
+
+def cleanup_audio():
+    """Restores the original microphone source and unloads temporary audio modules."""
+    global original_default_source, remap_module_id
+    if remap_module_id:
+        run_audio_cmd(["pactl", "unload-module", remap_module_id])
+    else:
+        run_audio_cmd(["pactl", "unload-module", "module-remap-source"])
+
+    if original_default_source:
+        run_audio_cmd(["pactl", "set-default-source", original_default_source])
 
 class CommSignals(QObject):
     state_updated = Signal(dict)
 
 comm = CommSignals()
-
 app_state = {"sharing": False, "paused": False}
 pending_action = None
-
-def run_audio_cmd(args):
-    """Executes pactl commands directly."""
-    try:
-        subprocess.run(args, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-    except Exception:
-        pass
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -90,29 +195,137 @@ def run_http_server():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
     server.serve_forever()
 
+def find_or_build_screego():
+    """Locates the screego binary across server/, root, and parent directories or auto-builds it."""
+    search_dirs = [
+        os.path.join(BASE_DIR, "server"),
+        BASE_DIR,
+        os.path.join(os.getcwd(), "server"),
+        os.getcwd(),
+        os.path.join(os.path.dirname(BASE_DIR), "server"),
+        os.path.dirname(BASE_DIR)
+    ]
+
+    for d in search_dirs:
+        bin_path = os.path.join(d, "screego")
+        if os.path.isfile(bin_path):
+            if not os.access(bin_path, os.X_OK):
+                try:
+                    os.chmod(bin_path, 0o755)
+                except Exception:
+                    pass
+            return bin_path
+
+    in_path = shutil.which("screego")
+    if in_path:
+        return in_path
+
+    go_bins = [
+        shutil.which("go"),
+        os.path.expanduser("~/.local/go/bin/go"),
+        os.path.expanduser("~/go/bin/go"),
+        "/usr/local/go/bin/go",
+        "/usr/bin/go"
+    ]
+    go_cmd = next((g for g in go_bins if g and os.path.isfile(g)), None)
+
+    if go_cmd:
+        src_dir = None
+        for d in search_dirs:
+            if os.path.isfile(os.path.join(d, "main.go")):
+                src_dir = d
+                break
+
+        if src_dir:
+            print("========================================")
+            print(f"Screego binary missing. Compiling in: {src_dir}")
+            print("========================================")
+            
+            ui_dist = os.path.join(src_dir, "ui", "build")
+            if not os.path.isdir(ui_dist):
+                deno_bins = [
+                    shutil.which("deno"),
+                    os.path.expanduser("~/.deno/bin/deno"),
+                    os.path.expanduser("~/.local/bin/deno")
+                ]
+                deno_cmd = next((d for d in deno_bins if d and os.path.isfile(d)), None)
+                ui_dir = os.path.join(src_dir, "ui")
+                if deno_cmd and os.path.isdir(ui_dir):
+                    print("Building React frontend with Deno...")
+                    subprocess.run([deno_cmd, "install"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    subprocess.run([deno_cmd, "task", "build"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+            out_bin = os.path.join(src_dir, "screego")
+            env = os.environ.copy()
+            env["CGO_ENABLED"] = "0"
+            build_res = subprocess.run(
+                [go_cmd, "build", "-ldflags=-s -w -X main.mode=prod", "-o", out_bin, "."],
+                cwd=src_dir,
+                env=env
+            )
+            if build_res.returncode == 0 and os.path.isfile(out_bin):
+                os.chmod(out_bin, 0o755)
+                return out_bin
+
+    return None
+
+def start_screego_server(lan_ip):
+    """Spawns the Screego backend binary."""
+    screego_bin = find_or_build_screego()
+
+    if not screego_bin or not os.path.isfile(screego_bin):
+        print("========================================")
+        print("Error: Screego executable binary not found.")
+        print("Please build it once by running: go build -o screego .")
+        print("========================================")
+        sys.exit(1)
+
+    bin_dir = os.path.dirname(os.path.abspath(screego_bin))
+    print(f"Using Screego binary: {screego_bin}")
+    print(f"Working Directory  : {bin_dir}")
+
+    env = os.environ.copy()
+    env["SCREEGO_EXTERNAL_IP"] = lan_ip
+    env["SCREEGO_SERVER_ADDRESS"] = "0.0.0.0:5050"
+    env["SCREEGO_TURN_ADDRESS"] = "0.0.0.0:3478"
+    env["SCREEGO_AUTH_MODE"] = "turn"
+    env["SCREEGO_CLOSE_ROOM_WHEN_OWNER_LEAVES"] = "true"
+    env["SCREEGO_LOG_LEVEL"] = "info"
+    
+    users_candidates = [
+        os.path.join(bin_dir, "users"),
+        os.path.join(BASE_DIR, "users"),
+        os.path.join(BASE_DIR, "server", "users"),
+        os.path.join(os.getcwd(), "users"),
+        os.path.join(os.getcwd(), "server", "users")
+    ]
+    for u_path in users_candidates:
+        if os.path.isfile(u_path):
+            env["SCREEGO_USERS_FILE"] = os.path.abspath(u_path)
+            break
+
+    proc = subprocess.Popen([screego_bin, "serve"], env=env, cwd=bin_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return proc
+
 def launch_hidden_browser(url):
-    """Finds and launches Edge on your host computer system with native PipeWire audio."""
+    """Finds and launches Edge/Chromium on host system for headless screen sharing."""
     executable_cmd = []
 
-    for binary in ["microsoft-edge-stable", "microsoft-edge"]:
+    for binary in ["microsoft-edge-stable", "microsoft-edge", "google-chrome-stable", "google-chrome", "chromium"]:
         path = shutil.which(binary)
         if path:
             executable_cmd = [path]
             break
 
     if not executable_cmd and shutil.which("flatpak"):
-        res = subprocess.run(
-            ["flatpak", "info", "com.microsoft.Edge"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
+        res = subprocess.run(["flatpak", "info", "com.microsoft.Edge"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if res.returncode == 0:
             executable_cmd = ["flatpak", "run", "com.microsoft.Edge"]
 
     if not executable_cmd:
-        print("WARNING: Could not find Microsoft Edge on your computer system.")
+        print("Warning: No compatible Chromium or Edge browser found.")
         return None
 
-    # Native PipeWire / PulseAudio flags (ALSA flags removed, audio sandbox bypassed)
     cmd = executable_cmd + [
         f"--app={url}",
         "--ozone-platform-hint=auto",
@@ -134,10 +347,7 @@ def launch_hidden_browser(url):
         "--disable-breakpad",
         "--disable-component-update"
     ]
-    
-    print(f"Launching Host Edge Streaming Engine with: {' '.join(executable_cmd)}")
     return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
 
 class InteractiveIndicator(QLabel):
     clicked = Signal()
@@ -161,10 +371,10 @@ class InteractiveIndicator(QLabel):
     def mouseMoveEvent(self, event: QMouseEvent):
         self.window().mouseMoveEvent(event)
 
-
 class OverlayToolbar(QWidget):
-    def __init__(self):
+    def __init__(self, lan_ip):
         super().__init__()
+        self.lan_ip = lan_ip
         self.audio_muted = False
         self.is_collapsed = False
         self._drag_pos = QPoint()
@@ -250,7 +460,7 @@ class OverlayToolbar(QWidget):
 
         self.indicator = InteractiveIndicator("●", self.container)
         self.indicator.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.indicator.setToolTip("Click to collapse/expand toolbar")
+        self.indicator.setToolTip(f"Screego running on http://{self.lan_ip}:5050\nClick to collapse/expand")
         self.set_indicator_color("#b8bb26")
         self.indicator.clicked.connect(self.toggle_collapse)
         container_layout.addWidget(self.indicator)
@@ -297,15 +507,17 @@ class OverlayToolbar(QWidget):
         pending_action = "toggle_pause"
 
     def toggle_mute(self):
+        global active_audio_source_name
         self.audio_muted = not self.audio_muted
+        source_to_mute = active_audio_source_name or "VirtualMic"
         if self.audio_muted:
             self.btn_mute.setText("Unmute")
             self.btn_mute.setStyleSheet("background-color: #cc241d; color: white;")
-            run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "1"])
+            run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "1"])
         else:
             self.btn_mute.setText("Mute")
             self.btn_mute.setStyleSheet("")
-            run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "0"])
+            run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "0"])
 
     def update_gui_state(self, state):
         if state["sharing"]:
@@ -339,16 +551,30 @@ class OverlayToolbar(QWidget):
             event.accept()
 
 if __name__ == '__main__':
+    kill_port_owners()
+    time.sleep(0.5)
+
+    lan_ip = detect_lan_ip()
+    print("========================================")
+    print(f" Detected Local IP : {lan_ip}")
+    print(f" Viewers can join  : http://{lan_ip}:5050")
+    print("========================================")
+
+    setup_pipewire_audio()
+
+    screego_proc = start_screego_server(lan_ip)
+    time.sleep(1.0)
+
     http_thread = threading.Thread(target=run_http_server, daemon=True)
     http_thread.start()
 
-    browser_proc = launch_hidden_browser(SCREEGO_URL)
+    room_url = f"http://127.0.0.1:5050/?room={ROOM_NAME}&create=true"
+    browser_proc = launch_hidden_browser(room_url)
 
     app = QApplication(sys.argv)
-    
-    toolbar = OverlayToolbar()
+    toolbar = OverlayToolbar(lan_ip)
     toolbar.show()
-    
+
     def cleanup():
         if browser_proc:
             browser_proc.terminate()
@@ -356,11 +582,15 @@ if __name__ == '__main__':
                 browser_proc.wait(timeout=2)
             except Exception:
                 browser_proc.kill()
-                
-        run_audio_cmd(["pactl", "unload-module", "module-remap-source"])
-        subprocess.run(["pkill", "-f", "go run . serve"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        subprocess.run(["pkill", "-f", "screego"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        subprocess.run(["pkill", "-f", "start.sh"], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+
+        if screego_proc:
+            screego_proc.terminate()
+            try:
+                screego_proc.wait(timeout=2)
+            except Exception:
+                screego_proc.kill()
+
+        cleanup_audio()
 
     app.aboutToQuit.connect(cleanup)
     sys.exit(app.exec())

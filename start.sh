@@ -1,91 +1,121 @@
 #!/bin/bash
 
-# Navigate to the server directory
-cd /var/mnt/shared-drive/2027/ComputerScripts/server || exit
+# Resolve the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR" || exit 1
 
-# Ensure Go and Host Python Venv are in PATH
-export PATH="$HOME/.local/go/bin:$HOME/go/bin:$PATH"
+# Ensure Go, Node/Deno, and local paths are included in PATH
+export PATH="$HOME/.local/go/bin:$HOME/go/bin:$HOME/.deno/bin:$PATH"
+
+# Locate Python environment
 PYTHON_BIN="$HOME/.local/server-venv/bin/python3"
 if [ ! -f "$PYTHON_BIN" ]; then
-    PYTHON_BIN="python3"
+    if [ -f "$SCRIPT_DIR/venv/bin/python3" ]; then
+        PYTHON_BIN="$SCRIPT_DIR/venv/bin/python3"
+    else
+        PYTHON_BIN="$(which python3 2>/dev/null || echo "python3")"
+    fi
 fi
 
-BUILD_UI="${BUILD_UI:-false}"
+BUILD_REQUESTED=false
+PACKAGE_REQUESTED=false
 
 for arg in "$@"; do
     case $arg in
         --build|-b|build)
-            BUILD_UI=true
+            BUILD_REQUESTED=true
             ;;
-        --no-build|-nb|nobuild)
-            BUILD_UI=false
+        --package|-p|package)
+            BUILD_REQUESTED=true
+            PACKAGE_REQUESTED=true
+            ;;
+        --help|-h)
+            echo "Usage: ./start.sh [options]"
+            echo "Options:"
+            echo "  (no args)       Start the Screego application (auto-builds binary if missing)"
+            echo "  --build, -b     Rebuild the React frontend and Go binary before starting"
+            echo "  --package, -p   Rebuild and package into standalone bundle using PyInstaller"
+            echo "  --help, -h      Show this help message"
+            exit 0
             ;;
     esac
 done
 
-if [ "$BUILD_UI" = "true" ]; then
-    echo "----------------------------------------"
-    echo "Rebuilding React Frontend with Deno..."
-    echo "----------------------------------------"
-    cd ui || exit
-    deno install
-    deno task build
-    cd ..
+# Check if precompiled Go binary or UI build directory is missing
+if [ ! -f "$SCRIPT_DIR/screego" ] || [ ! -d "$SCRIPT_DIR/ui/build" ]; then
+    BUILD_REQUESTED=true
+fi
+
+# 1. Build Frontend and Go Binary if requested or missing
+if [ "$BUILD_REQUESTED" = "true" ]; then
+    echo "=========================================="
+    echo " Building Screego Application Assets"
+    echo "=========================================="
+    
+    if [ -d "ui" ]; then
+        echo "[1/2] Building React UI..."
+        cd ui
+        if command -v deno &>/dev/null; then
+            deno install
+            deno task build
+        elif command -v yarn &>/dev/null; then
+            yarn
+            yarn build
+        elif command -v npm &>/dev/null; then
+            npm install
+            npm run build
+        else
+            echo "Error: Neither deno, yarn, nor npm was found to build the frontend."
+            exit 1
+        fi
+        cd "$SCRIPT_DIR"
+    fi
+
+    echo "[2/2] Compiling standalone Go binary (screego)..."
+    if command -v go &>/dev/null; then
+        export CGO_ENABLED=0
+        go build -ldflags="-s -w -X main.mode=prod" -o screego .
+    else
+        echo "Error: 'go' compiler is not installed or not in PATH."
+        exit 1
+    fi
+    echo "Binary compilation finished successfully."
+    echo "=========================================="
+fi
+
+# 2. Package into a PyInstaller standalone bundle if requested
+if [ "$PACKAGE_REQUESTED" = "true" ]; then
+    echo "Packaging into a self-contained standalone executable..."
+    if command -v pyinstaller &>/dev/null || $PYTHON_BIN -m PyInstaller --version &>/dev/null; then
+        PYINSTALLER_CMD="pyinstaller"
+        if ! command -v pyinstaller &>/dev/null; then
+            PYINSTALLER_CMD="$PYTHON_BIN -m PyInstaller"
+        fi
+        
+        $PYINSTALLER_CMD --noconfirm --onedir --windowed \
+            --name "screego-host" \
+            --add-binary "screego:." \
+            --add-data "users:." \
+            control_server.py
+            
+        echo "=========================================="
+        echo " Packaging complete!"
+        echo " Standalone bundle: $SCRIPT_DIR/dist/screego-host/screego-host"
+        echo " You can distribute the 'dist/screego-host' folder to any host without Go/Python installed."
+        echo "=========================================="
+        exit 0
+    else
+        echo "Error: PyInstaller is not installed in the current Python environment."
+        echo "Install it with: $PYTHON_BIN -m pip install pyinstaller"
+        exit 1
+    fi
+fi
+
+# 3. Launch via Standalone Bundle or Python Controller
+if [ -f "$SCRIPT_DIR/dist/screego-host/screego-host" ] && [ "$BUILD_REQUESTED" = "false" ]; then
+    echo "Starting prepackaged standalone binary: dist/screego-host/screego-host"
+    exec "$SCRIPT_DIR/dist/screego-host/screego-host"
 else
-    echo "----------------------------------------"
-    echo "Skipping React Frontend build (BUILD_UI=false)"
-    echo "----------------------------------------"
+    echo "Starting Screego Controller..."
+    exec "$PYTHON_BIN" "$SCRIPT_DIR/control_server.py"
 fi
-
-# 1. Kill processes holding specific ports
-fuser -k 5050/tcp 2>/dev/null
-fuser -k 5055/tcp 2>/dev/null
-fuser -k 3478/tcp 2>/dev/null
-fuser -k 3478/udp 2>/dev/null
-pkill -f control_server.py 2>/dev/null
-
-sleep 1.5
-
-# 2. Automatically detect Wi-Fi IP
-IP=$(ip -4 addr show | grep -v '198.18.' | grep -v '127.0.0.1' | sed -n 's/.*inet \([0-9.]*\)\/.*/\1/p' | head -n 1)
-if [ -z "$IP" ]; then
-    IP="127.0.0.1"
-fi
-
-echo "----------------------------------------"
-echo "Detected Local Wi-Fi IP: $IP"
-
-# 3. Update screego config
-if [ -f "screego.config" ]; then
-    sed -i '/^SCREEGO_EXTERNAL_IP=/d' screego.config
-else
-    cp screego.config.example screego.config
-fi
-echo "SCREEGO_EXTERNAL_IP=$IP" >> screego.config
-
-# 4. Create and set PipeWire VirtualMic directly on Host
-DEFAULT_SINK=$(pactl get-default-sink 2>/dev/null)
-if [ -n "$DEFAULT_SINK" ]; then
-    pactl unload-module module-remap-source 2>/dev/null
-    echo "Routing Computer Audio Output (No Mic) -> VirtualMic"
-    pactl load-module module-remap-source source_name=VirtualMic master="${DEFAULT_SINK}.monitor" source_properties=device.description=VirtualMic 2>/dev/null
-    pactl set-default-source VirtualMic 2>/dev/null
-    pactl set-source-mute VirtualMic 0 2>/dev/null
-    pactl set-source-volume VirtualMic 100% 2>/dev/null
-fi
-
-ROOM_NAME="a"
-echo "Room to create: $ROOM_NAME"
-echo "Students can join at: http://$IP:5050"
-echo "----------------------------------------"
-
-ROOM_URL="http://127.0.0.1:5050/?room=$ROOM_NAME&create=true"
-
-# Launch host python GUI
-(sleep 2 && $PYTHON_BIN control_server.py "$ROOM_URL") &
-SUBSHELL_PID=$!
-
-trap "kill $SUBSHELL_PID 2>/dev/null; pkill -f control_server.py 2>/dev/null" EXIT
-
-# Start Go Server natively on host
-go run . serve
