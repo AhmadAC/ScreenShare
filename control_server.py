@@ -4,10 +4,13 @@ import json
 import time
 import shutil
 import socket
+import tempfile
+import datetime
 import subprocess
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingTCPServer
+import urllib.request
 
 # Allow Qt to use xcb fallback on Wayland for 100% overlay compatibility
 if "QT_QPA_PLATFORM" not in os.environ:
@@ -31,8 +34,26 @@ def get_base_dir():
 
 BASE_DIR = get_base_dir()
 
+# AppImage sets $OWD to the directory where the user launched the application
+EXECUTION_DIR = os.environ.get("OWD", os.getcwd())
+LOG_FILE_PATH = os.path.join(EXECUTION_DIR, "screego-host.log")
+
+def log(msg):
+    """Outputs timestamped message to stdout and appends to screego-host.log in run directory."""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    formatted = f"[{timestamp}] {msg}"
+    print(formatted)
+    try:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as f:
+            f.write(formatted + "\n")
+    except Exception as e:
+        print(f"Failed to write to log file {LOG_FILE_PATH}: {e}")
+
 def get_clean_host_env():
-    """Strips AppImage and PyInstaller specific variables so host processes don't crash on library conflicts."""
+    """
+    Strips AppImage and PyInstaller specific variables so host processes
+    (such as Edge / Chrome / GTK) do not crash due to library or schema mismatches.
+    """
     env = os.environ.copy()
     vars_to_remove = [
         "LD_LIBRARY_PATH",
@@ -40,10 +61,30 @@ def get_clean_host_env():
         "PYTHONPATH",
         "PYTHONHOME",
         "QT_PLUGIN_PATH",
-        "QML2_IMPORT_PATH"
+        "QML2_IMPORT_PATH",
+        "GSETTINGS_SCHEMA_DIR",
+        "GTK_PATH",
+        "GTK_MODULES",
+        "GTK_EXE_PREFIX",
+        "FONTCONFIG_PATH",
+        "FONTCONFIG_FILE",
+        "APPIMAGE",
+        "APPDIR",
+        "ARGV0"
     ]
     for var in vars_to_remove:
         env.pop(var, None)
+
+    # Clean XDG_DATA_DIRS by stripping any temporary AppImage mount points
+    xdg_data = env.get("XDG_DATA_DIRS", "")
+    if xdg_data:
+        cleaned_dirs = [d for d in xdg_data.split(":") if not d.startswith("/tmp/.mount_")]
+        if not cleaned_dirs:
+            cleaned_dirs = ["/usr/local/share", "/usr/share"]
+        env["XDG_DATA_DIRS"] = ":".join(cleaned_dirs)
+    else:
+        env["XDG_DATA_DIRS"] = "/usr/local/share:/usr/share"
+
     return env
 
 def detect_lan_ip():
@@ -136,12 +177,14 @@ def setup_pipewire_audio():
             run_audio_cmd(["pactl", "set-default-source", "VirtualMic"])
             run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "0"])
             run_audio_cmd(["pactl", "set-source-volume", "VirtualMic", "100%"])
+            log("Audio setup: Loaded module-remap-source (VirtualMic)")
         else:
             active_audio_source_name = monitor_source
             run_audio_cmd(["pactl", "set-default-source", monitor_source])
             run_audio_cmd(["pactl", "set-source-mute", monitor_source, "0"])
+            log(f"Audio setup: Default source fallback to {monitor_source}")
     except Exception as e:
-        print(f"Warning: Audio setup encountered: {e}")
+        log(f"Warning: Audio setup encountered: {e}")
 
 def cleanup_audio():
     """Restores the original microphone source and unloads temporary audio modules."""
@@ -252,9 +295,9 @@ def find_or_build_screego():
                 break
 
         if src_dir:
-            print("========================================")
-            print(f"Screego binary missing. Compiling in: {src_dir}")
-            print("========================================")
+            log("========================================")
+            log(f"Screego binary missing. Compiling in: {src_dir}")
+            log("========================================")
             
             ui_dist = os.path.join(src_dir, "ui", "build")
             if not os.path.isdir(ui_dist):
@@ -266,7 +309,7 @@ def find_or_build_screego():
                 deno_cmd = next((d for d in deno_bins if d and os.path.isfile(d)), None)
                 ui_dir = os.path.join(src_dir, "ui")
                 if deno_cmd and os.path.isdir(ui_dir):
-                    print("Building React frontend with Deno...")
+                    log("Building React frontend with Deno...")
                     subprocess.run([deno_cmd, "install"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     subprocess.run([deno_cmd, "task", "build"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
@@ -289,15 +332,15 @@ def start_screego_server(lan_ip):
     screego_bin = find_or_build_screego()
 
     if not screego_bin or not os.path.isfile(screego_bin):
-        print("========================================")
-        print("Error: Screego executable binary not found.")
-        print("Please build it once by running: go build -o screego .")
-        print("========================================")
+        log("========================================")
+        log("Error: Screego executable binary not found.")
+        log("Please build it once by running: go build -o screego .")
+        log("========================================")
         sys.exit(1)
 
     bin_dir = os.path.dirname(os.path.abspath(screego_bin))
-    print(f"Using Screego binary: {screego_bin}")
-    print(f"Working Directory  : {bin_dir}")
+    log(f"Using Screego binary: {screego_bin}")
+    log(f"Working Directory  : {bin_dir}")
 
     env = os.environ.copy()
     env["SCREEGO_EXTERNAL_IP"] = lan_ip
@@ -322,10 +365,43 @@ def start_screego_server(lan_ip):
     proc = subprocess.Popen([screego_bin, "serve"], env=env, cwd=bin_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return proc
 
-def launch_hidden_browser(url):
-    """Finds and launches Edge/Chromium on host system with clean environment."""
-    executable_cmd = []
+def wait_for_server(url, timeout=6.0):
+    """Waits until the local Screego HTTP server is responsive before opening browser."""
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=1.0) as resp:
+                if resp.status in (200, 302, 304):
+                    log(f"Screego server is up and responsive at {url}")
+                    return True
+        except Exception:
+            time.sleep(0.2)
+    log(f"Warning: Screego server did not respond at {url} within {timeout} seconds. Proceeding anyway.")
+    return False
 
+def stream_browser_logs(proc):
+    """Reads lines from browser process stderr/stdout and appends them to our log file in real time."""
+    def read_stream(stream, name):
+        try:
+            for line in iter(stream.readline, ''):
+                if line:
+                    log(f"[Browser {name}] {line.strip()}")
+        except Exception:
+            pass
+        finally:
+            try:
+                stream.close()
+            except Exception:
+                pass
+
+    if proc.stdout:
+        threading.Thread(target=read_stream, args=(proc.stdout, "stdout"), daemon=True).start()
+    if proc.stderr:
+        threading.Thread(target=read_stream, args=(proc.stderr, "stderr"), daemon=True).start()
+
+def find_browser_executable():
+    """Searches for Microsoft Edge, Chrome, or Chromium across host paths, Snaps, and Flatpaks."""
     search_binaries = [
         "microsoft-edge-stable",
         "microsoft-edge",
@@ -342,28 +418,67 @@ def launch_hidden_browser(url):
         "google-chrome-unstable"
     ]
 
-    for binary in search_binaries:
-        path = shutil.which(binary)
-        if path:
-            executable_cmd = [path]
-            break
+    explicit_dirs = [
+        "/usr/bin",
+        "/usr/local/bin",
+        "/snap/bin",
+        os.path.expanduser("~/.local/bin"),
+        os.path.expanduser("~/bin"),
+        "/var/lib/flatpak/exports/bin",
+        os.path.expanduser("~/.local/share/flatpak/exports/bin")
+    ]
 
-    if not executable_cmd and shutil.which("flatpak"):
+    log("Scanning host for browser binaries...")
+    for binary in search_binaries:
+        # Standard PATH lookup
+        path = shutil.which(binary)
+        if path and os.path.isfile(path) and os.access(path, os.X_OK):
+            log(f"Found executable browser in PATH: '{binary}' -> '{path}'")
+            return [path]
+        
+        # Explicit directories lookup (helps when running inside AppImage with trimmed PATH)
+        for d in explicit_dirs:
+            full_path = os.path.join(d, binary)
+            if os.path.isfile(full_path) and os.access(full_path, os.X_OK):
+                log(f"Found executable browser in '{d}': '{full_path}'")
+                return [full_path]
+
+    # Flatpak Application IDs lookup
+    flatpak_bin = shutil.which("flatpak") or "/usr/bin/flatpak"
+    if os.path.isfile(flatpak_bin) and os.access(flatpak_bin, os.X_OK):
         for app_id in ["com.microsoft.Edge", "com.google.Chrome", "org.chromium.Chromium", "com.brave.Browser"]:
-            res = subprocess.run(["flatpak", "info", app_id], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            res = subprocess.run([flatpak_bin, "info", app_id], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             if res.returncode == 0:
-                executable_cmd = ["flatpak", "run", app_id]
-                break
+                log(f"Found candidate browser in Flatpak: '{app_id}'")
+                return [flatpak_bin, "run", app_id]
+
+    return None
+
+def launch_hidden_browser(url):
+    """Finds and launches Edge/Chromium on host system in an isolated profile with clean environment."""
+    executable_cmd = find_browser_executable()
 
     if not executable_cmd:
-        print("Warning: No compatible Chromium or Edge browser found on host system.")
+        log("========================================================================")
+        log("ERROR: No compatible Microsoft Edge or Chromium browser found on system!")
+        log(f"Current PATH: {os.environ.get('PATH', '')}")
+        log("Please install Microsoft Edge or Google Chrome/Chromium to enable screen sharing.")
+        log("========================================================================")
         return None
+
+    # Dedicated user-data-dir ensures Edge creates a standalone instance instead of connecting to a running background instance
+    isolated_profile_dir = os.path.join(tempfile.gettempdir(), "screego_browser_profile")
+    os.makedirs(isolated_profile_dir, exist_ok=True)
 
     cmd = executable_cmd + [
         f"--app={url}",
+        f"--user-data-dir={isolated_profile_dir}",
+        "--no-sandbox",
+        "--disable-gpu-sandbox",
+        "--disable-dev-shm-usage",
         "--ozone-platform-hint=auto",
         "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization",
-        "--disable-features=AudioServiceOutOfProcess,AudioServiceSandbox",
+        "--disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process",
         "--use-fake-ui-for-media-stream",
         "--auto-select-desktop-capture-source=Entire screen",
         "--enable-usermedia-screen-capturing",
@@ -373,15 +488,48 @@ def launch_hidden_browser(url):
         "--autoplay-policy=no-user-gesture-required",
         "--no-first-run",
         "--no-default-browser-check",
-        "--disable-logging",
-        "--log-level=3",
+        "--disable-background-networking",
+        "--disable-sync",
         "--disable-breakpad",
-        "--disable-component-update"
+        "--disable-component-update",
+        "--window-size=1280,720"
     ]
     
     clean_env = get_clean_host_env()
-    print(f"Launching browser command: {' '.join(cmd)}")
-    return subprocess.Popen(cmd, env=clean_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    log("=================================================================")
+    log(" Launching Browser Subprocess")
+    log(f" Command         : {' '.join(cmd)}")
+    log(f" Profile Dir     : {isolated_profile_dir}")
+    log(f" DISPLAY         : {clean_env.get('DISPLAY', '<none>')}")
+    log(f" WAYLAND_DISPLAY : {clean_env.get('WAYLAND_DISPLAY', '<none>')}")
+    log(f" XDG_DATA_DIRS   : {clean_env.get('XDG_DATA_DIRS', '<none>')}")
+    log("=================================================================")
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            env=clean_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1
+        )
+        stream_browser_logs(proc)
+
+        def check_browser_health():
+            time.sleep(3.0)
+            ret = proc.poll()
+            if ret is not None:
+                log(f"CRITICAL: Browser terminated unexpectedly shortly after launch! Exit code: {ret}")
+                log("Examine any [Browser stderr] lines above in this log to diagnose the crash.")
+            else:
+                log("Browser process is active and running normally.")
+
+        threading.Thread(target=check_browser_health, daemon=True).start()
+        return proc
+    except Exception as e:
+        log(f"CRITICAL: Failed to spawn browser process: {e}")
+        return None
 
 class InteractiveIndicator(QLabel):
     clicked = Signal()
@@ -494,7 +642,7 @@ class OverlayToolbar(QWidget):
 
         self.indicator = InteractiveIndicator("●", self.container)
         self.indicator.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.indicator.setToolTip(f"Screego running on http://{self.lan_ip}:5050\nClick to collapse/expand")
+        self.indicator.setToolTip(f"Screego running on http://{self.lan_ip}:5050\nClick to collapse/expand\nLog: {LOG_FILE_PATH}")
         self.set_indicator_color("#b8bb26")
         self.indicator.clicked.connect(self.toggle_collapse)
         container_layout.addWidget(self.indicator)
@@ -585,22 +733,31 @@ class OverlayToolbar(QWidget):
             event.accept()
 
 if __name__ == '__main__':
+    log("=================================================================")
+    log(" Screego Host Starting")
+    log(f" Execution Working Dir : {EXECUTION_DIR}")
+    log(f" Log File Location     : {LOG_FILE_PATH}")
+    log(f" Python sys.executable : {sys.executable}")
+    log(f" Frozen bundle status  : {getattr(sys, 'frozen', False)}")
+    log("=================================================================")
+
     kill_port_owners()
     time.sleep(0.5)
 
     lan_ip = detect_lan_ip()
-    print("========================================")
-    print(f" Detected Local IP : {lan_ip}")
-    print(f" Viewers can join  : http://{lan_ip}:5050")
-    print("========================================")
+    log(f" Detected Local IP     : {lan_ip}")
+    log(f" Viewers URL           : http://{lan_ip}:5050")
 
     setup_pipewire_audio()
 
     screego_proc = start_screego_server(lan_ip)
-    time.sleep(1.0)
+    
+    # Wait until Screego backend is ready to accept HTTP connections
+    wait_for_server(f"http://127.0.0.1:5050/health", timeout=6.0)
 
     http_thread = threading.Thread(target=run_http_server, daemon=True)
     http_thread.start()
+    log(f"Local control bridge HTTP server listening on 127.0.0.1:{PORT}")
 
     room_url = f"http://127.0.0.1:5050/?room={ROOM_NAME}&create=true"
     browser_proc = launch_hidden_browser(room_url)
@@ -610,6 +767,7 @@ if __name__ == '__main__':
     toolbar.show()
 
     def cleanup():
+        log("Application shutdown initiated. Cleaning up subprocesses...")
         if browser_proc:
             browser_proc.terminate()
             try:
@@ -625,6 +783,7 @@ if __name__ == '__main__':
                 screego_proc.kill()
 
         cleanup_audio()
+        log("Cleanup finished. Screego Host terminated.")
 
     app.aboutToQuit.connect(cleanup)
     sys.exit(app.exec())
