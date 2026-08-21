@@ -126,3 +126,127 @@
 [2026-08-21 14:19:56] [Browser stderr] [58:58:0821/141956.393179:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:249] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
 [2026-08-21 14:21:19] Application shutdown initiated. Cleaning up subprocesses...
 [2026-08-21 14:21:20] Cleanup finished. ScreenShare Host terminated.
+[2026-08-21 14:24:00] =================================================================
+[2026-08-21 14:24:00]  ScreenShare Host Starting
+[2026-08-21 14:24:00]  Execution Working Dir : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:24:00]  Log File Location     : /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare-host.log
+[2026-08-21 14:24:00]  Python sys.executable : /usr/bin/python
+[2026-08-21 14:24:00]  Frozen bundle status  : False
+[2026-08-21 14:24:00] =================================================================
+[2026-08-21 14:24:01]  Detected Local IP     : 192.168.31.40
+[2026-08-21 14:24:01]  Viewers URL           : http://192.168.31.40:5050
+[2026-08-21 14:24:01] Audio setup: Loaded module-remap-source (VirtualMic)
+[2026-08-21 14:24:01] Using server binary: /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare
+[2026-08-21 14:24:01] Working Directory  : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:24:01] [Server stdout] [90m2026-08-21T14:24:01+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-08-21 14:24:01] [Server stdout] [90m2026-08-21T14:24:01+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-08-21 14:24:01] [Server stdout] [90m2026-08-21T14:24:01+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-08-21 14:24:01] [Server stdout] [90m2026-08-21T14:24:01+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-08-21 14:24:01] [Server stdout] [90m2026-08-21T14:24:01+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-08-21 14:24:01] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-08-21 14:24:01] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-08-21 14:24:01] Scanning host for browser binaries...
+[2026-08-21 14:24:01] Found candidate browser in Flatpak: 'com.microsoft.Edge'
+[2026-08-21 14:24:01] =================================================================
+[2026-08-21 14:24:01]  Launching Browser Subprocess
+[2026-08-21 14:24:01]  Command         : /usr/bin/flatpak run com.microsoft.Edge --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=/tmp/ScreenShare_browser_profile --test-type --no-sandbox --disable-dev-shm-usage --disable-vulkan --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan --use-fake-ui-for-media-stream --auto-select-desktop-capture-source=Entire screen --enable-usermedia-screen-capturing --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-08-21 14:24:01]  Profile Dir     : /tmp/ScreenShare_browser_profile
+[2026-08-21 14:24:01]  DISPLAY         : :0
+[2026-08-21 14:24:01]  WAYLAND_DISPLAY : wayland-0
+[2026-08-21 14:24:01]  XDG_DATA_DIRS   : /var/home/steam/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+[2026-08-21 14:24:01] =================================================================
+[2026-08-21 14:24:04] Browser process is active and running normally.
+[2026-08-21 14:24:04] [Browser stderr] [57:57:0821/142404.843079:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:249] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicUniformBuffersPerPipelineLayout artificially reduced from 32 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicStorageBuffersPerPipelineLayout artificially reduced from 32 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicUniformBuffersPerPipelineLayout artificially reduced from 500000 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicStorageBuffersPerPipelineLayout artificially reduced from 500000 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicUniformBuffersPerPipelineLayout artificially reduced from 32 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicStorageBuffersPerPipelineLayout artificially reduced from 32 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicUniformBuffersPerPipelineLayout artificially reduced from 500000 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicStorageBuffersPerPipelineLayout artificially reduced from 500000 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] [177:177:0821/142705.461388:ERROR:services/on_device_model/ml/edge_onnxruntime_genai/oga_utils.cc:109] Edge LLM: Error getting component directory
+[2026-08-21 14:27:05] [Browser stderr] [177:177:0821/142705.461748:ERROR:services/on_device_model/edge_presandbox_init.cc:19] Edge LLM Pre sandbox error: Error getting component directory
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicUniformBuffersPerPipelineLayout artificially reduced from 32 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicStorageBuffersPerPipelineLayout artificially reduced from 32 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicUniformBuffersPerPipelineLayout artificially reduced from 500000 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:27:05] [Browser stderr] Warning: maxDynamicStorageBuffersPerPipelineLayout artificially reduced from 500000 to 16 to fit dynamic offset allocation limit.
+[2026-08-21 14:28:23] Application shutdown initiated. Cleaning up subprocesses...
+[2026-08-21 14:28:24] Cleanup finished. ScreenShare Host terminated.
+[2026-08-21 14:28:58] =================================================================
+[2026-08-21 14:28:58]  ScreenShare Host Starting
+[2026-08-21 14:28:58]  Execution Working Dir : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:28:58]  Log File Location     : /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare-host.log
+[2026-08-21 14:28:58]  Python sys.executable : /usr/bin/python
+[2026-08-21 14:28:58]  Frozen bundle status  : False
+[2026-08-21 14:28:58] =================================================================
+[2026-08-21 14:29:00]  Detected Local IP     : 192.168.31.40
+[2026-08-21 14:29:00]  Viewers URL           : http://192.168.31.40:5050
+[2026-08-21 14:29:00] Audio setup: Loaded module-remap-source (VirtualMic)
+[2026-08-21 14:29:00] Using server binary: /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare
+[2026-08-21 14:29:00] Working Directory  : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:29:00] [Server stdout] [90m2026-08-21T14:29:00+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-08-21 14:29:00] [Server stdout] [90m2026-08-21T14:29:00+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-08-21 14:29:00] [Server stdout] [90m2026-08-21T14:29:00+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-08-21 14:29:00] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-08-21 14:29:00] [Server stdout] [90m2026-08-21T14:29:00+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-08-21 14:29:00] [Server stdout] [90m2026-08-21T14:29:00+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-08-21 14:29:00] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-08-21 14:29:00] Scanning host for browser binaries...
+[2026-08-21 14:29:00] Found candidate browser in Flatpak: 'com.microsoft.Edge'
+[2026-08-21 14:29:00] =================================================================
+[2026-08-21 14:29:00]  Launching Browser Subprocess
+[2026-08-21 14:29:00]  Command         : /usr/bin/flatpak run com.microsoft.Edge --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=/tmp/ScreenShare_browser_profile --test-type --no-sandbox --disable-dev-shm-usage --disable-vulkan --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan --use-fake-ui-for-media-stream --auto-select-desktop-capture-source=Entire screen --enable-usermedia-screen-capturing --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-08-21 14:29:00]  Profile Dir     : /tmp/ScreenShare_browser_profile
+[2026-08-21 14:29:00]  DISPLAY         : :0
+[2026-08-21 14:29:00]  WAYLAND_DISPLAY : wayland-0
+[2026-08-21 14:29:00]  XDG_DATA_DIRS   : /var/home/steam/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+[2026-08-21 14:29:00] =================================================================
+[2026-08-21 14:29:01] [Browser stderr] [2 zypak-helper] Wait found events, but sd-event found none
+[2026-08-21 14:29:03] [Browser stderr] [57:57:0821/142903.410414:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:249] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
+[2026-08-21 14:29:03] Browser process is active and running normally.
+[2026-08-21 14:30:45] Application shutdown initiated. Cleaning up subprocesses...
+[2026-08-21 14:30:45] Cleanup finished. ScreenShare Host terminated.
+[2026-08-21 14:34:08] =================================================================
+[2026-08-21 14:34:08]  ScreenShare Host Starting
+[2026-08-21 14:34:08]  Execution Working Dir : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:34:08]  Log File Location     : /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare-host.log
+[2026-08-21 14:34:08]  Python sys.executable : /usr/bin/python
+[2026-08-21 14:34:08]  Frozen bundle status  : False
+[2026-08-21 14:34:08] =================================================================
+[2026-08-21 14:34:08]  Detected Local IP     : 192.168.31.40
+[2026-08-21 14:34:08]  Viewers URL           : http://192.168.31.40:5050
+[2026-08-21 14:34:09] Audio setup: Loaded module-remap-source (VirtualMic)
+[2026-08-21 14:34:09] Using server binary: /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare
+[2026-08-21 14:34:09] Working Directory  : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-21 14:34:09] [Server stdout] [90m2026-08-21T14:34:09+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-08-21 14:34:09] [Server stdout] [90m2026-08-21T14:34:09+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-08-21 14:34:09] [Server stdout] [90m2026-08-21T14:34:09+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-08-21 14:34:09] [Server stdout] [90m2026-08-21T14:34:09+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-08-21 14:34:09] [Server stdout] [90m2026-08-21T14:34:09+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-08-21 14:34:09] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-08-21 14:34:09] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-08-21 14:34:09] Scanning host for browser binaries...
+[2026-08-21 14:34:09] Found candidate browser in Flatpak: 'com.microsoft.Edge'
+[2026-08-21 14:34:09] =================================================================
+[2026-08-21 14:34:09]  Launching Browser Subprocess
+[2026-08-21 14:34:09]  Command         : /usr/bin/flatpak run com.microsoft.Edge --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=/tmp/ScreenShare_browser_profile --test-type --no-sandbox --disable-dev-shm-usage --disable-vulkan --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan --use-fake-ui-for-media-stream --auto-select-desktop-capture-source=Entire screen --enable-usermedia-screen-capturing --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-08-21 14:34:09]  Profile Dir     : /tmp/ScreenShare_browser_profile
+[2026-08-21 14:34:09]  DISPLAY         : :0
+[2026-08-21 14:34:09]  WAYLAND_DISPLAY : wayland-0
+[2026-08-21 14:34:09]  XDG_DATA_DIRS   : /var/home/steam/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+[2026-08-21 14:34:09] =================================================================
+[2026-08-21 14:34:12] Browser process is active and running normally.
+[2026-08-21 14:34:12] [Browser stderr] [57:57:0821/143412.686974:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:249] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
+[2026-08-21 14:34:36] [Browser stderr] [107:138:0821/143436.707845:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[1d3e900:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-21 14:34:36] [Browser stderr] [107:138:0821/143436.709063:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[2540700:1:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-21 14:34:36] [Browser stderr] [107:138:0821/143436.971115:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[1d3e900:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-21 14:34:37] [Browser stderr] [107:138:0821/143437.488043:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[1d3e900:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-21 14:34:38] [Browser stderr] [107:138:0821/143438.501956:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[1d3e900:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-21 14:34:40] [Browser stderr] [107:138:0821/143440.517866:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[1d3e900:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-21 14:34:44] [Browser stderr] [107:138:0821/143444.533600:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[1d3e900:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-21 14:34:52] [Browser stderr] [107:138:0821/143452.549201:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[1d3e900:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-21 14:34:57] Application shutdown initiated. Cleaning up subprocesses...
+[2026-08-21 14:34:57] [Browser stderr] [63:69:0821/143457.057562:ERROR:services/network/p2p/socket_tcp.cc:233] OnRead/HandleReadResult reports socket destroyed
+[2026-08-21 14:34:57] [Browser stderr] [63:69:0821/143457.060488:ERROR:services/network/p2p/socket_tcp.cc:233] OnRead/HandleReadResult reports socket destroyed
+[2026-08-21 14:34:57] Cleanup finished. ScreenShare Host terminated.

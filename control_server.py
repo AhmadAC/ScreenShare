@@ -18,10 +18,10 @@ if "QT_QPA_PLATFORM" not in os.environ:
 
 from PySide6.QtCore import Qt, QObject, Signal, QPoint
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QHBoxLayout, QPushButton, QLabel, 
+    QApplication, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, 
     QGraphicsDropShadowEffect
 )
-from PySide6.QtGui import QColor, QMouseEvent
+from PySide6.QtGui import QColor, QMouseEvent, QPainter, QPixmap
 
 PORT = 5055
 ROOM_NAME = "a"
@@ -49,11 +49,242 @@ def log(msg):
     except Exception as e:
         print(f"Failed to write to log file {LOG_FILE_PATH}: {e}")
 
+# =====================================================================
+# PURE-PYTHON QR CODE GENERATOR (COMPLIANT WITH ISO/IEC 18004)
+# =====================================================================
+GF_EXP = [0] * 512
+GF_LOG = [0] * 256
+
+def _init_gf():
+    x = 1
+    for i in range(255):
+        GF_EXP[i] = x
+        GF_EXP[i + 255] = x
+        GF_LOG[x] = i
+        x <<= 1
+        if x & 256:
+            x ^= 0x11D
+
+_init_gf()
+
+def gf_mul(x, y):
+    if x == 0 or y == 0:
+        return 0
+    return GF_EXP[GF_LOG[x] + GF_LOG[y]]
+
+def rs_generator_poly(degree):
+    poly = [1]
+    for i in range(degree):
+        next_poly = [0] * (len(poly) + 1)
+        root = GF_EXP[i]
+        for j in range(len(poly)):
+            next_poly[j] ^= gf_mul(poly[j], root)
+            next_poly[j + 1] ^= poly[j]
+        poly = next_poly
+    return poly
+
+def rs_encode(data, num_ec_bytes):
+    gen = rs_generator_poly(num_ec_bytes)
+    msg = data + [0] * num_ec_bytes
+    for i in range(len(data)):
+        coef = msg[i]
+        if coef != 0:
+            for j in range(len(gen)):
+                msg[i + j] ^= gf_mul(gen[j], coef)
+    return msg[len(data):]
+
+VERSION_SPECS = [
+    {"version": 1, "size": 21, "totalCodewords": 26, "dataCodewords": 19, "ecCodewords": 7, "alignment": []},
+    {"version": 2, "size": 25, "totalCodewords": 44, "dataCodewords": 34, "ecCodewords": 10, "alignment": [6, 18]},
+    {"version": 3, "size": 29, "totalCodewords": 70, "dataCodewords": 55, "ecCodewords": 15, "alignment": [6, 22]},
+    {"version": 4, "size": 33, "totalCodewords": 100, "dataCodewords": 80, "ecCodewords": 20, "alignment": [6, 26]},
+    {"version": 5, "size": 37, "totalCodewords": 134, "dataCodewords": 108, "ecCodewords": 26, "alignment": [6, 30]},
+    {"version": 6, "size": 41, "totalCodewords": 172, "dataCodewords": 136, "ecCodewords": 36, "alignment": [6, 34]},
+]
+
+FORMAT_INFO_L = [0x77C4, 0x72F3, 0x7DAA, 0x789D, 0x662F, 0x6318, 0x6C41, 0x6976]
+
+def generate_qr_matrix(text: str):
+    utf8_bytes = list(text.encode("utf-8"))
+    data_len = len(utf8_bytes)
+
+    spec = next((s for s in VERSION_SPECS if s["dataCodewords"] >= data_len + 3), VERSION_SPECS[-1])
+    size = spec["size"]
+
+    bits = []
+    def push_bits(val, length):
+        for i in range(length - 1, -1, -1):
+            bits.append((val >> i) & 1)
+
+    push_bits(0b0100, 4)       # Byte mode
+    push_bits(data_len, 8)     # Character count
+    for b in utf8_bytes:
+        push_bits(b, 8)
+
+    total_data_bits = spec["dataCodewords"] * 8
+    term_len = min(4, total_data_bits - len(bits))
+    push_bits(0, term_len)
+
+    while len(bits) % 8 != 0:
+        bits.append(0)
+
+    pad_bytes = [0xEC, 0x11]
+    pad_idx = 0
+    while len(bits) < total_data_bits:
+        push_bits(pad_bytes[pad_idx % 2], 8)
+        pad_idx += 1
+
+    data_bytes = []
+    for i in range(0, len(bits), 8):
+        b = 0
+        for j in range(8):
+            b = (b << 1) | bits[i + j]
+        data_bytes.append(b)
+
+    ec_bytes = rs_encode(data_bytes, spec["ecCodewords"])
+    final_codewords = data_bytes + ec_bytes
+
+    matrix = [[None] * size for _ in range(size)]
+    is_func = [[False] * size for _ in range(size)]
+
+    def set_func(r, c, val):
+        if 0 <= r < size and 0 <= c < size:
+            matrix[r][c] = val
+            is_func[r][c] = True
+
+    def draw_finder(r0, c0):
+        for r in range(-1, 8):
+            for c in range(-1, 8):
+                if 0 <= r0 + r < size and 0 <= c0 + c < size:
+                    is_black = (0 <= r <= 6 and (c == 0 or c == 6)) or \
+                               (0 <= c <= 6 and (r == 0 or r == 6)) or \
+                               (2 <= r <= 4 and 2 <= c <= 4)
+                    set_func(r0 + r, c0 + c, is_black)
+
+    draw_finder(0, 0)
+    draw_finder(0, size - 7)
+    draw_finder(size - 7, 0)
+
+    for i in range(8, size - 8):
+        set_func(6, i, i % 2 == 0)
+        set_func(i, 6, i % 2 == 0)
+
+    if spec["alignment"]:
+        for ar in spec["alignment"]:
+            for ac in spec["alignment"]:
+                if (ar <= 8 and ac <= 8) or (ar <= 8 and ac >= size - 8) or (ar >= size - 8 and ac <= 8):
+                    continue
+                for r in range(-2, 3):
+                    for c in range(-2, 3):
+                        set_func(ar + r, ac + c, max(abs(r), abs(c)) != 1)
+
+    set_func(size - 8, 8, True)
+    for i in range(9):
+        if 0 <= i < size:
+            if not is_func[8][i]: set_func(8, i, False)
+            if not is_func[i][8]: set_func(i, 8, False)
+    for i in range(8):
+        if 0 <= size - 1 - i < size:
+            if not is_func[8][size - 1 - i]: set_func(8, size - 1 - i, False)
+            if not is_func[size - 1 - i][8]: set_func(size - 1 - i, 8, False)
+
+    byte_idx = 0
+    bit_idx = 7
+    up = True
+
+    for right in range(size - 1, 0, -2):
+        if right == 6:
+            right -= 1
+        for vert in range(size):
+            r = size - 1 - vert if up else vert
+            for c in (right, right - 1):
+                if not is_func[r][c]:
+                    bit = False
+                    if byte_idx < len(final_codewords):
+                        bit = ((final_codewords[byte_idx] >> bit_idx) & 1) == 1
+                        bit_idx -= 1
+                        if bit_idx < 0:
+                            bit_idx = 7
+                            byte_idx += 1
+                    matrix[r][c] = bit
+        up = not up
+
+    final_result = [[False] * size for _ in range(size)]
+    for r in range(size):
+        for c in range(size):
+            if is_func[r][c]:
+                final_result[r][c] = bool(matrix[r][c])
+            else:
+                final_result[r][c] = bool(matrix[r][c]) ^ (((r + c) % 2) == 0)
+
+    format_bits = FORMAT_INFO_L[0]
+    def get_fbit(i):
+        return ((format_bits >> i) & 1) == 1
+
+    final_result[8][0] = get_fbit(0)
+    final_result[8][1] = get_fbit(1)
+    final_result[8][2] = get_fbit(2)
+    final_result[8][3] = get_fbit(3)
+    final_result[8][4] = get_fbit(4)
+    final_result[8][5] = get_fbit(5)
+    final_result[8][7] = get_fbit(6)
+    final_result[8][8] = get_fbit(7)
+    final_result[7][8] = get_fbit(8)
+    final_result[5][8] = get_fbit(9)
+    final_result[4][8] = get_fbit(10)
+    final_result[3][8] = get_fbit(11)
+    final_result[2][8] = get_fbit(12)
+    final_result[1][8] = get_fbit(13)
+    final_result[0][8] = get_fbit(14)
+
+    for i in range(7):
+        final_result[size - 1 - i][8] = get_fbit(i)
+    for i in range(8):
+        final_result[8][size - 8 + i] = get_fbit(7 + i)
+
+    return final_result
+
+def get_qr_pixmap(text: str):
+    """Renders QR code to a high-contrast QPixmap with standard 4-module quiet zone margin."""
+    try:
+        import qrcode
+        qr = qrcode.QRCode(
+            version=None,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=8,
+            border=4,
+        )
+        qr.add_data(text)
+        qr.make(fit=True)
+        matrix = qr.get_matrix()
+        border = 0
+    except Exception:
+        matrix = generate_qr_matrix(text)
+        border = 4
+
+    size = len(matrix)
+    scale = 8
+    total_dim = (size + border * 2) * scale
+    pixmap = QPixmap(total_dim, total_dim)
+    pixmap.fill(QColor("#ffffff"))
+
+    painter = QPainter(pixmap)
+    painter.setBrush(QColor("#000000"))
+    painter.setPen(Qt.PenStyle.NoPen)
+
+    for r in range(size):
+        for c in range(size):
+            if matrix[r][c]:
+                painter.drawRect((c + border) * scale, (r + border) * scale, scale, scale)
+
+    painter.end()
+    return pixmap
+
+# =====================================================================
+# SYSTEM & ENVIRONMENT HELPERS
+# =====================================================================
 def get_clean_host_env():
-    """
-    Strips AppImage and PyInstaller specific variables so host processes
-    (such as Edge / Chrome / GTK) do not crash due to library or schema mismatches.
-    """
+    """Strips AppImage and PyInstaller specific variables so host processes don't crash."""
     env = os.environ.copy()
     vars_to_remove = [
         "LD_LIBRARY_PATH",
@@ -75,7 +306,6 @@ def get_clean_host_env():
     for var in vars_to_remove:
         env.pop(var, None)
 
-    # Clean XDG_DATA_DIRS by stripping any temporary AppImage mount points
     xdg_data = env.get("XDG_DATA_DIRS", "")
     if xdg_data:
         cleaned_dirs = [d for d in xdg_data.split(":") if not d.startswith("/tmp/.mount_")]
@@ -88,7 +318,7 @@ def get_clean_host_env():
     return env
 
 def detect_lan_ip():
-    """Automatically detects the real Wi-Fi / Ethernet IPv4 address, filtering out virtual/TUN/198.18.x subnets."""
+    """Automatically detects the real Wi-Fi / Ethernet IPv4 address, filtering out virtual/TUN subnets."""
     try:
         res = subprocess.run(["ip", "-4", "-o", "addr", "show"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
         candidates = []
@@ -98,17 +328,14 @@ def detect_lan_ip():
             parts = line.split()
             if len(parts) >= 4:
                 ifname = parts[1]
-                ip_cidr = parts[3]
-                ip = ip_cidr.split("/")[0]
+                ip = parts[3].split("/")[0]
                 
-                # Exclude loopback, link-local, and VPN / Proxy TUN subnets (such as 198.18.x.x)
                 if ip.startswith("127.") or ip.startswith("198.18.") or ip.startswith("169.254."):
                     continue
                 if any(ifname.startswith(p) for p in ["lo", "docker", "veth", "br-", "tun", "tap", "wg", "tailscale"]):
                     continue
                 candidates.append((ifname, ip))
 
-        # Prioritize wireless (wl*) and ethernet (eth*, en*)
         for ifname, ip in candidates:
             if ifname.startswith("wl") or ifname.startswith("eth") or ifname.startswith("en"):
                 return ip
@@ -130,7 +357,7 @@ def detect_lan_ip():
     return "127.0.0.1"
 
 def kill_port_owners():
-    """Terminates any stale processes using Screego/ScreenShare/Control ports."""
+    """Terminates any stale processes using Screego/Control ports."""
     ports = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
     for port in ports:
         subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -147,11 +374,7 @@ remap_module_id = None
 active_audio_source_name = None
 
 def setup_pipewire_audio():
-    """
-    Multi-tiered audio capture solution compatible with PulseAudio and PipeWire.
-    Tier 1: Attempts to create an isolated VirtualMic using module-remap-source from default sink monitor.
-    Tier 2: If dynamic module loading is disabled, directly switches the default audio source to the active monitor source.
-    """
+    """Sets up virtual audio sink / mic monitoring for screen sharing."""
     global original_default_source, remap_module_id, active_audio_source_name
     try:
         res_src = subprocess.run(["pactl", "get-default-source"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
@@ -187,7 +410,7 @@ def setup_pipewire_audio():
         log(f"Warning: Audio setup encountered: {e}")
 
 def cleanup_audio():
-    """Restores the original microphone source and unloads temporary audio modules."""
+    """Restores the original audio default source."""
     global original_default_source, remap_module_id
     if remap_module_id:
         run_audio_cmd(["pactl", "unload-module", remap_module_id])
@@ -289,7 +512,7 @@ def find_or_build_binary():
         "/usr/local/go/bin/go",
         "/usr/bin/go"
     ]
-    go_cmd = next((g for g in go_bins if g and os.path.isfile(g)), None)
+    go_cmd = next((g for g in go_bins if g and os.path.isfile(go_cmd or "")), None)
 
     if go_cmd:
         src_dir = None
@@ -352,7 +575,7 @@ def stream_process_logs(proc, prefix_label):
         threading.Thread(target=read_stream, args=(proc.stderr, "stderr"), daemon=True).start()
 
 def start_screego_server(lan_ip):
-    """Spawns the Go backend binary, exporting both SCREEGO_* and SCREENSHARE_* variables."""
+    """Spawns the Go backend binary, enabling TURN relay and persistent rooms."""
     server_bin = find_or_build_binary()
 
     if not server_bin or not os.path.isfile(server_bin):
@@ -368,13 +591,14 @@ def start_screego_server(lan_ip):
 
     env = os.environ.copy()
     
-    # Export BOTH prefixes so whichever config parser is in Go, it finds its variables
+    # AUTH_MODE=none gives phone guests full STUN+TURN access without requiring password login
+    # CLOSE_ROOM_WHEN_OWNER_LEAVES=false prevents room from disappearing on host reconnects
     configs = {
         "EXTERNAL_IP": lan_ip,
         "SERVER_ADDRESS": "0.0.0.0:5050",
         "TURN_ADDRESS": "0.0.0.0:3478",
-        "AUTH_MODE": "turn",
-        "CLOSE_ROOM_WHEN_OWNER_LEAVES": "true",
+        "AUTH_MODE": "none",
+        "CLOSE_ROOM_WHEN_OWNER_LEAVES": "false",
         "LOG_LEVEL": "info",
     }
     for k, v in configs.items():
@@ -474,7 +698,7 @@ def find_browser_executable():
     return None
 
 def launch_hidden_browser(url):
-    """Finds and launches Edge/Chromium on host system with Vulkan disabled for Wayland stability."""
+    """Finds and launches Edge/Chromium on host system in an isolated profile."""
     executable_cmd = find_browser_executable()
 
     if not executable_cmd:
@@ -485,7 +709,6 @@ def launch_hidden_browser(url):
         log("========================================================================")
         return None
 
-    # Dedicated user-data-dir ensures browser creates an isolated instance
     isolated_profile_dir = os.path.join(tempfile.gettempdir(), "ScreenShare_browser_profile")
     os.makedirs(isolated_profile_dir, exist_ok=True)
 
@@ -551,6 +774,84 @@ def launch_hidden_browser(url):
         log(f"CRITICAL: Failed to spawn browser process: {e}")
         return None
 
+# =====================================================================
+# PY-SIDE 6 GUI OVERLAYS
+# =====================================================================
+class QROverlayDialog(QWidget):
+    """Floating QR Code popup card. Clicking anywhere on it closes it."""
+    def __init__(self, join_url):
+        super().__init__()
+        self.join_url = join_url
+        self.init_ui()
+
+    def init_ui(self):
+        self.setWindowFlags(
+            Qt.WindowType.Window |
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint |
+            Qt.WindowType.Tool
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        self.container = QWidget(self)
+        self.container.setObjectName("QRContainer")
+        self.container.setStyleSheet("""
+            QWidget#QRContainer {
+                background-color: rgba(28, 28, 28, 250);
+                border: 2px solid #fabd2f;
+                border-radius: 16px;
+            }
+            QLabel {
+                border: none;
+                background: transparent;
+                color: #fbf1c7;
+                font-family: sans-serif;
+            }
+        """)
+
+        c_layout = QVBoxLayout(self.container)
+        c_layout.setContentsMargins(18, 18, 18, 18)
+        c_layout.setSpacing(10)
+        c_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        title = QLabel("Scan with Phone to Join", self.container)
+        title.setStyleSheet("font-size: 15px; font-weight: bold; color: #fabd2f;")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        c_layout.addWidget(title)
+
+        pixmap = get_qr_pixmap(self.join_url)
+
+        self.qr_img = QLabel(self.container)
+        self.qr_img.setPixmap(pixmap)
+        self.qr_img.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.qr_img.setCursor(Qt.CursorShape.PointingHandCursor)
+        c_layout.addWidget(self.qr_img)
+
+        url_label = QLabel(self.join_url, self.container)
+        url_label.setStyleSheet("font-size: 12px; color: #8ec07c; font-weight: bold;")
+        url_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        c_layout.addWidget(url_label)
+
+        hint = QLabel("(Click anywhere on this card to close)", self.container)
+        hint.setStyleSheet("font-size: 11px; color: #a89984; font-style: italic;")
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        c_layout.addWidget(hint)
+
+        layout.addWidget(self.container)
+        self.setLayout(layout)
+
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(25)
+        shadow.setColor(QColor(0, 0, 0, 220))
+        shadow.setOffset(0, 6)
+        self.container.setGraphicsEffect(shadow)
+
+    def mousePressEvent(self, event: QMouseEvent):
+        self.hide()
+
 class InteractiveIndicator(QLabel):
     clicked = Signal()
 
@@ -577,9 +878,12 @@ class OverlayToolbar(QWidget):
     def __init__(self, lan_ip):
         super().__init__()
         self.lan_ip = lan_ip
+        # ?room=a&create=true ensures joinIfExist connects immediately without "room not found" errors
+        self.viewer_url = f"http://{self.lan_ip}:5050/?room={ROOM_NAME}&create=true"
         self.audio_muted = False
         self.is_collapsed = False
         self._drag_pos = QPoint()
+        self.qr_dialog = QROverlayDialog(self.viewer_url)
         self.init_ui()
 
     def init_ui(self):
@@ -624,6 +928,13 @@ class OverlayToolbar(QWidget):
                 background-color: #1d2021;
                 color: #928374;
             }
+            QPushButton#QRBtn {
+                background-color: #fabd2f;
+                color: #282828;
+            }
+            QPushButton#QRBtn:hover {
+                background-color: #d79921;
+            }
             QPushButton#ExitBtn:hover {
                 background-color: #cc241d;
                 color: white;
@@ -660,9 +971,15 @@ class OverlayToolbar(QWidget):
         self.btn_mute.clicked.connect(self.toggle_mute)
         container_layout.addWidget(self.btn_mute)
 
+        self.btn_qr = QPushButton("QR", self.container)
+        self.btn_qr.setObjectName("QRBtn")
+        self.btn_qr.setToolTip("Show QR code for phone scan")
+        self.btn_qr.clicked.connect(self.toggle_qr)
+        container_layout.addWidget(self.btn_qr)
+
         self.indicator = InteractiveIndicator("●", self.container)
         self.indicator.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.indicator.setToolTip(f"ScreenShare running on http://{self.lan_ip}:5050\nClick to collapse/expand\nLog: {LOG_FILE_PATH}")
+        self.indicator.setToolTip(f"ScreenShare running on {self.viewer_url}\nClick to collapse/expand\nLog: {LOG_FILE_PATH}")
         self.set_indicator_color("#b8bb26")
         self.indicator.clicked.connect(self.toggle_collapse)
         container_layout.addWidget(self.indicator)
@@ -687,13 +1004,24 @@ class OverlayToolbar(QWidget):
     def set_indicator_color(self, color_hex):
         self.indicator.setStyleSheet(f"color: {color_hex}; font-size: 13px; padding: 0 4px;")
 
+    def toggle_qr(self):
+        if self.qr_dialog.isVisible():
+            self.qr_dialog.hide()
+        else:
+            tb_pos = self.pos()
+            self.qr_dialog.move(tb_pos.x() + self.width() + 10, tb_pos.y())
+            self.qr_dialog.show()
+
     def toggle_collapse(self):
         self.is_collapsed = not self.is_collapsed
         self.grip.setVisible(not self.is_collapsed)
         self.btn_share.setVisible(not self.is_collapsed)
         self.btn_pause.setVisible(not self.is_collapsed)
         self.btn_mute.setVisible(not self.is_collapsed)
+        self.btn_qr.setVisible(not self.is_collapsed)
         self.btn_exit.setVisible(not self.is_collapsed)
+        if self.is_collapsed and self.qr_dialog.isVisible():
+            self.qr_dialog.hide()
         self.container.adjustSize()
         self.adjustSize()
 
@@ -772,7 +1100,6 @@ if __name__ == '__main__':
 
     server_proc = start_screego_server(lan_ip)
     
-    # Wait until backend is ready to accept HTTP connections
     wait_for_server(f"http://127.0.0.1:5050/health", timeout=6.0)
 
     http_thread = threading.Thread(target=run_http_server, daemon=True)
@@ -788,6 +1115,9 @@ if __name__ == '__main__':
 
     def cleanup():
         log("Application shutdown initiated. Cleaning up subprocesses...")
+        if toolbar.qr_dialog:
+            toolbar.qr_dialog.close()
+
         if browser_proc:
             browser_proc.terminate()
             try:
