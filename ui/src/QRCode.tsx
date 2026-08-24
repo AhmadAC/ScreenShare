@@ -60,8 +60,6 @@ const VERSION_SPECS = [
     {version: 7, size: 45, totalCodewords: 196, dataCodewords: 156, ecCodewords: 40, alignment: [6, 22, 38]},
 ];
 
-const FORMAT_INFO_L = [0x77c4, 0x72f3, 0x7daa, 0x789d, 0x662f, 0x6318, 0x6c41, 0x6976];
-
 export function generateQRMatrix(text: string): boolean[][] {
     const utf8Bytes = new TextEncoder().encode(text);
     const dataLen = utf8Bytes.length;
@@ -199,7 +197,7 @@ export function generateQRMatrix(text: string): boolean[][] {
         up = !up;
     }
 
-    // Apply optimal mask pattern
+    // Apply standard mask pattern 0: (r + c) % 2 == 0
     const maskFn = (r: number, c: number) => (r + c) % 2 === 0;
     const finalResult: boolean[][] = Array.from({length: size}, () => Array(size).fill(false));
 
@@ -213,34 +211,29 @@ export function generateQRMatrix(text: string): boolean[][] {
         }
     }
 
-    // Write format info (Mask 0: 0x77c4)
-    const formatBits = FORMAT_INFO_L[0];
-    const getFormatBit = (i: number) => ((formatBits >> (14 - i)) & 1) === 1;
+    // Write ISO/IEC 18004 format info (Level L, Mask 0: 0x77c4)
+    const formatBits = 0x77c4;
+    const getFormatBit = (i: number) => ((formatBits >> i) & 1) === 1;
 
-    // Top-left
-    finalResult[8][0] = getFormatBit(0);
-    finalResult[8][1] = getFormatBit(1);
-    finalResult[8][2] = getFormatBit(2);
-    finalResult[8][3] = getFormatBit(3);
-    finalResult[8][4] = getFormatBit(4);
-    finalResult[8][5] = getFormatBit(5);
+    // Copy 1 (Around top-left finder)
+    for (let i = 0; i < 6; i++) {
+        finalResult[8][i] = getFormatBit(i);
+    }
     finalResult[8][7] = getFormatBit(6);
     finalResult[8][8] = getFormatBit(7);
     finalResult[7][8] = getFormatBit(8);
-    finalResult[5][8] = getFormatBit(9);
-    finalResult[4][8] = getFormatBit(10);
-    finalResult[3][8] = getFormatBit(11);
-    finalResult[2][8] = getFormatBit(12);
-    finalResult[1][8] = getFormatBit(13);
-    finalResult[0][8] = getFormatBit(14);
+    for (let i = 9; i < 15; i++) {
+        finalResult[14 - i][8] = getFormatBit(i);
+    }
 
-    // Split across edges
-    for (let i = 0; i < 7; i++) {
+    // Copy 2 (Split across bottom-left and top-right finders)
+    for (let i = 0; i < 8; i++) {
         finalResult[size - 1 - i][8] = getFormatBit(i);
     }
-    for (let i = 0; i < 8; i++) {
-        finalResult[8][size - 8 + i] = getFormatBit(7 + i);
+    for (let i = 8; i < 15; i++) {
+        finalResult[8][size - 15 + i] = getFormatBit(i);
     }
+    finalResult[size - 8][8] = true; // Always dark module
 
     return finalResult;
 }
@@ -257,7 +250,7 @@ export const QRCodeCanvas: React.FC<{text: string; size?: number}> = ({text, siz
         try {
             const matrix = generateQRMatrix(text);
             const matrixSize = matrix.length;
-            const quietZone = 2;
+            const quietZone = 4;
             const totalModules = matrixSize + quietZone * 2;
             const moduleSize = Math.floor(size / totalModules);
             const actualSize = moduleSize * totalModules;

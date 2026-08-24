@@ -100,9 +100,8 @@ VERSION_SPECS = [
     {"version": 4, "size": 33, "totalCodewords": 100, "dataCodewords": 80, "ecCodewords": 20, "alignment": [6, 26]},
     {"version": 5, "size": 37, "totalCodewords": 134, "dataCodewords": 108, "ecCodewords": 26, "alignment": [6, 30]},
     {"version": 6, "size": 41, "totalCodewords": 172, "dataCodewords": 136, "ecCodewords": 36, "alignment": [6, 34]},
+    {"version": 7, "size": 45, "totalCodewords": 196, "dataCodewords": 156, "ecCodewords": 40, "alignment": [6, 22, 38]},
 ]
-
-FORMAT_INFO_L = [0x77C4, 0x72F3, 0x7DAA, 0x789D, 0x662F, 0x6318, 0x6C41, 0x6976]
 
 def generate_qr_matrix(text: str):
     utf8_bytes = list(text.encode("utf-8"))
@@ -217,30 +216,26 @@ def generate_qr_matrix(text: str):
             else:
                 final_result[r][c] = bool(matrix[r][c]) ^ (((r + c) % 2) == 0)
 
-    format_bits = FORMAT_INFO_L[0]
+    # Standard ISO/IEC 18004 Format Information for Error Correction Level L, Mask 0 (0x77c4)
+    format_bits = 0x77C4
     def get_fbit(i):
         return ((format_bits >> i) & 1) == 1
 
-    final_result[8][0] = get_fbit(0)
-    final_result[8][1] = get_fbit(1)
-    final_result[8][2] = get_fbit(2)
-    final_result[8][3] = get_fbit(3)
-    final_result[8][4] = get_fbit(4)
-    final_result[8][5] = get_fbit(5)
+    # Copy 1 (Around top-left finder)
+    for i in range(6):
+        final_result[8][i] = get_fbit(i)
     final_result[8][7] = get_fbit(6)
     final_result[8][8] = get_fbit(7)
     final_result[7][8] = get_fbit(8)
-    final_result[5][8] = get_fbit(9)
-    final_result[4][8] = get_fbit(10)
-    final_result[3][8] = get_fbit(11)
-    final_result[2][8] = get_fbit(12)
-    final_result[1][8] = get_fbit(13)
-    final_result[0][8] = get_fbit(14)
+    for i in range(9, 15):
+        final_result[14 - i][8] = get_fbit(i)
 
-    for i in range(7):
-        final_result[size - 1 - i][8] = get_fbit(i)
+    # Copy 2 (Split across bottom-left and top-right finders)
     for i in range(8):
-        final_result[8][size - 8 + i] = get_fbit(7 + i)
+        final_result[size - 1 - i][8] = get_fbit(i)
+    for i in range(8, 15):
+        final_result[8][size - 15 + i] = get_fbit(i)
+    final_result[size - 8][8] = True  # Always dark module
 
     return final_result
 
@@ -306,7 +301,6 @@ def get_clean_host_env():
     for var in vars_to_remove:
         env.pop(var, None)
 
-    # Clean PATH from /tmp/.mount_ paths and ensure standard host search paths exist
     current_path = env.get("PATH", "")
     paths = [p for p in current_path.split(":") if not p.startswith("/tmp/.mount_")]
     extra_paths = [
@@ -393,7 +387,7 @@ def kill_port_owners():
         subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
 
 def run_audio_cmd(args):
-    """Executes pactl commands directly using clean host environment."""
+    """Executes pactl commands directly."""
     clean_env = get_clean_host_env()
     try:
         subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
@@ -623,8 +617,6 @@ def start_screenshare_server(lan_ip):
 
     env = os.environ.copy()
     
-    # AUTH_MODE=none gives phone guests full STUN+TURN access without requiring password login
-    # CLOSE_ROOM_WHEN_OWNER_LEAVES=false prevents room from disappearing on host reconnects
     configs = {
         "EXTERNAL_IP": lan_ip,
         "SERVER_ADDRESS": "0.0.0.0:5050",
@@ -758,7 +750,6 @@ def find_browser_executable():
                 log(f"Found candidate browser in Flatpak: '{app_id}'")
                 return [flatpak_bin, "run", app_id]
 
-            # Also check flatpak storage locations directly in case flatpak info was restricted
             flatpak_app_dirs = [
                 os.path.join("/var/lib/flatpak/app", app_id),
                 os.path.expanduser(f"~/.local/share/flatpak/app/{app_id}"),
@@ -950,7 +941,6 @@ class OverlayToolbar(QWidget):
     def __init__(self, lan_ip):
         super().__init__()
         self.lan_ip = lan_ip
-        # ?room=a&create=true ensures joinIfExist connects immediately without "room not found" errors
         self.viewer_url = f"http://{self.lan_ip}:5050/?room={ROOM_NAME}&create=true"
         self.audio_muted = False
         self.is_collapsed = False
