@@ -41,8 +41,10 @@ for arg in "$@"; do
     esac
 done
 
-# Check if precompiled Go binary or UI build directory is missing
+# Automatically rebuild if binary is missing or if sources are newer than build artifacts
 if [ ! -f "$SCRIPT_DIR/ScreenShare" ] || [ ! -d "$SCRIPT_DIR/ui/build" ]; then
+    BUILD_REQUESTED=true
+elif [ -d "$SCRIPT_DIR/ui/src" ] && [ "$SCRIPT_DIR/ui/src" -nt "$SCRIPT_DIR/ui/build" ]; then
     BUILD_REQUESTED=true
 fi
 
@@ -55,6 +57,7 @@ if [ "$BUILD_REQUESTED" = "true" ]; then
     if [ -d "ui" ]; then
         echo "[1/2] Building React UI..."
         cd ui
+        rm -rf build/
         if command -v deno &>/dev/null; then
             deno install
             deno task build
