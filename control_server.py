@@ -306,21 +306,50 @@ def get_clean_host_env():
     for var in vars_to_remove:
         env.pop(var, None)
 
+    # Clean PATH from /tmp/.mount_ paths and ensure standard host search paths exist
+    current_path = env.get("PATH", "")
+    paths = [p for p in current_path.split(":") if not p.startswith("/tmp/.mount_")]
+    extra_paths = [
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/local/sbin",
+        "/usr/sbin",
+        "/sbin",
+        "/snap/bin",
+        "/var/lib/flatpak/exports/bin",
+        os.path.expanduser("~/.local/share/flatpak/exports/bin"),
+        os.path.expanduser("~/.local/bin"),
+        os.path.expanduser("~/bin"),
+    ]
+    for ep in extra_paths:
+        if ep not in paths:
+            paths.append(ep)
+    env["PATH"] = ":".join(paths)
+
     xdg_data = env.get("XDG_DATA_DIRS", "")
     if xdg_data:
         cleaned_dirs = [d for d in xdg_data.split(":") if not d.startswith("/tmp/.mount_")]
-        if not cleaned_dirs:
-            cleaned_dirs = ["/usr/local/share", "/usr/share"]
+        standard_xdg = [
+            os.path.expanduser("~/.local/share/flatpak/exports/share"),
+            "/var/lib/flatpak/exports/share",
+            "/usr/local/share",
+            "/usr/share"
+        ]
+        for s in standard_xdg:
+            if s not in cleaned_dirs:
+                cleaned_dirs.append(s)
         env["XDG_DATA_DIRS"] = ":".join(cleaned_dirs)
     else:
-        env["XDG_DATA_DIRS"] = "/usr/local/share:/usr/share"
+        env["XDG_DATA_DIRS"] = f"{os.path.expanduser('~/.local/share/flatpak/exports/share')}:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
 
     return env
 
 def detect_lan_ip():
     """Automatically detects the real Wi-Fi / Ethernet IPv4 address, filtering out virtual/TUN subnets."""
+    clean_env = get_clean_host_env()
     try:
-        res = subprocess.run(["ip", "-4", "-o", "addr", "show"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        res = subprocess.run(["ip", "-4", "-o", "addr", "show"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
         candidates = []
         for line in res.stdout.strip().split("\n"):
             if not line:
@@ -358,14 +387,16 @@ def detect_lan_ip():
 
 def kill_port_owners():
     """Terminates any stale processes using ScreenShare/Control ports."""
+    clean_env = get_clean_host_env()
     ports = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
     for port in ports:
-        subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
 
 def run_audio_cmd(args):
-    """Executes pactl commands directly."""
+    """Executes pactl commands directly using clean host environment."""
+    clean_env = get_clean_host_env()
     try:
-        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
     except Exception:
         pass
 
@@ -376,11 +407,12 @@ active_audio_source_name = None
 def setup_pipewire_audio():
     """Sets up virtual audio sink / mic monitoring for screen sharing."""
     global original_default_source, remap_module_id, active_audio_source_name
+    clean_env = get_clean_host_env()
     try:
-        res_src = subprocess.run(["pactl", "get-default-source"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        res_src = subprocess.run(["pactl", "get-default-source"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
         original_default_source = res_src.stdout.strip()
 
-        res_sink = subprocess.run(["pactl", "get-default-sink"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        res_sink = subprocess.run(["pactl", "get-default-sink"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
         default_sink = res_sink.stdout.strip()
         if not default_sink:
             return
@@ -392,7 +424,7 @@ def setup_pipewire_audio():
             "source_name=VirtualMic",
             f"master={monitor_source}",
             "source_properties=device.description=VirtualMic"
-        ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
 
         if load_res.returncode == 0 and load_res.stdout.strip().isdigit():
             remap_module_id = load_res.stdout.strip()
@@ -646,16 +678,24 @@ def wait_for_server(url, timeout=6.0):
 
 def find_browser_executable():
     """Searches for Microsoft Edge, Chrome, or Chromium across host paths, Snaps, and Flatpaks."""
+    clean_env = get_clean_host_env()
     search_binaries = [
         "microsoft-edge-stable",
         "microsoft-edge",
+        "msedge",
+        "com.microsoft.Edge",
         "google-chrome-stable",
         "google-chrome",
+        "chrome",
+        "com.google.Chrome",
         "chromium",
         "chromium-browser",
+        "org.chromium.Chromium",
         "brave-browser",
         "brave",
+        "com.brave.Browser",
         "vivaldi",
+        "vivaldi-stable",
         "microsoft-edge-beta",
         "microsoft-edge-dev",
         "google-chrome-beta",
@@ -665,16 +705,23 @@ def find_browser_executable():
     explicit_dirs = [
         "/usr/bin",
         "/usr/local/bin",
+        "/bin",
         "/snap/bin",
+        "/var/lib/flatpak/exports/bin",
+        os.path.expanduser("~/.local/share/flatpak/exports/bin"),
         os.path.expanduser("~/.local/bin"),
         os.path.expanduser("~/bin"),
-        "/var/lib/flatpak/exports/bin",
-        os.path.expanduser("~/.local/share/flatpak/exports/bin")
+        "/opt/microsoft/msedge",
+        "/opt/microsoft/msedge-beta",
+        "/opt/microsoft/msedge-dev",
+        "/opt/google/chrome",
+        "/opt/brave.com/brave",
+        "/app/bin"
     ]
 
     log("Scanning host for browser binaries...")
     for binary in search_binaries:
-        path = shutil.which(binary)
+        path = shutil.which(binary, path=clean_env.get("PATH", ""))
         if path and os.path.isfile(path) and os.access(path, os.X_OK):
             log(f"Found executable browser in PATH: '{binary}' -> '{path}'")
             return [path]
@@ -685,12 +732,39 @@ def find_browser_executable():
                 log(f"Found executable browser in '{d}': '{full_path}'")
                 return [full_path]
 
-    flatpak_bin = shutil.which("flatpak") or "/usr/bin/flatpak"
-    if os.path.isfile(flatpak_bin) and os.access(flatpak_bin, os.X_OK):
-        for app_id in ["com.microsoft.Edge", "com.google.Chrome", "org.chromium.Chromium", "com.brave.Browser"]:
-            res = subprocess.run([flatpak_bin, "info", app_id], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    flatpak_candidates = [
+        shutil.which("flatpak", path=clean_env.get("PATH", "")),
+        "/usr/bin/flatpak",
+        "/usr/local/bin/flatpak",
+        "/var/lib/flatpak",
+    ]
+    flatpak_bin = next((f for f in flatpak_candidates if f and os.path.isfile(f) and os.access(f, os.X_OK)), None)
+    
+    app_ids = [
+        "com.microsoft.Edge",
+        "com.microsoft.Edge.Dev",
+        "com.microsoft.Edge.Beta",
+        "com.google.Chrome",
+        "com.google.Chrome.Dev",
+        "com.google.Chrome.Beta",
+        "org.chromium.Chromium",
+        "com.brave.Browser"
+    ]
+
+    if flatpak_bin:
+        for app_id in app_ids:
+            res = subprocess.run([flatpak_bin, "info", app_id], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
             if res.returncode == 0:
                 log(f"Found candidate browser in Flatpak: '{app_id}'")
+                return [flatpak_bin, "run", app_id]
+
+            # Also check flatpak storage locations directly in case flatpak info was restricted
+            flatpak_app_dirs = [
+                os.path.join("/var/lib/flatpak/app", app_id),
+                os.path.expanduser(f"~/.local/share/flatpak/app/{app_id}"),
+            ]
+            if any(os.path.isdir(p) for p in flatpak_app_dirs):
+                log(f"Found Flatpak app directory for '{app_id}'")
                 return [flatpak_bin, "run", app_id]
 
     return None
