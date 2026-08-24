@@ -20,7 +20,6 @@ import {RoomUser} from './message';
 import {useSettings, VideoDisplayMode} from './settings';
 import {SettingDialog} from './SettingDialog';
 import {UseConfig} from './useConfig';
-import {QRCodeCanvas} from './QRCode';
 
 const HostStream: unique symbol = Symbol('mystream');
 
@@ -145,7 +144,7 @@ export const Room = ({
         }
     };
 
-    // Calculate the accurate LAN viewer URL for QR Code and copying
+    // Calculate the accurate LAN viewer URL for copying
     const serverHost =
         (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') && config?.externalIP
             ? config.externalIP
@@ -282,19 +281,6 @@ export const Room = ({
 
     return (
         <div className={classes.videoContainer}>
-            {/* Top-Right QR Code for quick phone scan and join */}
-            <Paper
-                elevation={8}
-                className={classes.qrContainer}
-                onClick={copyLink}
-                title="Click to copy join link"
-            >
-                <QRCodeCanvas text={viewerJoinUrl} size={110} />
-                <Typography variant="caption" className={classes.qrLabel}>
-                    Scan to Join
-                </Typography>
-            </Paper>
-
             {audioBlocked && !isHostSelfStream && (
                 <Paper
                     elevation={10}
@@ -590,31 +576,6 @@ const AudioControl = ({
 };
 
 const useStyles = makeStyles()(() => ({
-    qrContainer: {
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        zIndex: 35,
-        padding: '8px',
-        backgroundColor: '#ffffff',
-        borderRadius: '10px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        cursor: 'pointer',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-        transition: 'transform 0.2s ease-in-out',
-        '&:hover': {
-            transform: 'scale(1.05)',
-        },
-    },
-    qrLabel: {
-        color: '#1d2021',
-        fontWeight: 'bold',
-        fontSize: '11px',
-        marginTop: '4px',
-        letterSpacing: '0.5px',
-    },
     bottomContainer: {
         position: 'fixed',
         display: 'flex',
