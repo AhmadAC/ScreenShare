@@ -10,10 +10,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
-	"github.com/screego/server/auth"
-	"github.com/screego/server/config"
-	"github.com/screego/server/ui"
-	"github.com/screego/server/ws"
+	"github.com/ScreenShare/server/auth"
+	"github.com/ScreenShare/server/config"
+	"github.com/ScreenShare/server/ui"
+	"github.com/ScreenShare/server/ws"
 )
 
 type Health struct {
@@ -100,7 +100,7 @@ func basicAuth(handler http.Handler, users *auth.Users) http.HandlerFunc {
 		user, pass, ok := r.BasicAuth()
 
 		if !ok || !users.Validate(user, pass) {
-			w.Header().Set("WWW-Authenticate", `Basic realm="screego"`)
+			w.Header().Set("WWW-Authenticate", `Basic realm="ScreenShare"`)
 			w.WriteHeader(401)
 			_, _ = w.Write([]byte("Unauthorized.\n"))
 			return

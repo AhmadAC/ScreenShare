@@ -250,3 +250,56 @@
 [2026-08-21 14:34:57] [Browser stderr] [63:69:0821/143457.057562:ERROR:services/network/p2p/socket_tcp.cc:233] OnRead/HandleReadResult reports socket destroyed
 [2026-08-21 14:34:57] [Browser stderr] [63:69:0821/143457.060488:ERROR:services/network/p2p/socket_tcp.cc:233] OnRead/HandleReadResult reports socket destroyed
 [2026-08-21 14:34:57] Cleanup finished. ScreenShare Host terminated.
+[2026-08-24 11:03:42] =================================================================
+[2026-08-24 11:03:42]  ScreenShare Host Starting
+[2026-08-24 11:03:42]  Execution Working Dir : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-24 11:03:42]  Log File Location     : /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare-host.log
+[2026-08-24 11:03:42]  Python sys.executable : /usr/bin/python
+[2026-08-24 11:03:42]  Frozen bundle status  : False
+[2026-08-24 11:03:42] =================================================================
+[2026-08-24 11:03:43]  Detected Local IP     : 172.30.62.41
+[2026-08-24 11:03:43]  Viewers URL           : http://172.30.62.41:5050
+[2026-08-24 11:03:43] Audio setup: Loaded module-remap-source (VirtualMic)
+[2026-08-24 11:03:43] Using server binary: /var/mnt/shared-drive/2027/ComputerScripts/server/ScreenShare
+[2026-08-24 11:03:43] Working Directory  : /var/mnt/shared-drive/2027/ComputerScripts/server
+[2026-08-24 11:03:43] [Server stdout] [90m2026-08-24T11:03:43+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-08-24 11:03:43] [Server stdout] [90m2026-08-24T11:03:43+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-08-24 11:03:43] [Server stdout] [90m2026-08-24T11:03:43+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-08-24 11:03:43] [Server stdout] [90m2026-08-24T11:03:43+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-08-24 11:03:43] [Server stdout] [90m2026-08-24T11:03:43+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-08-24 11:03:43] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-08-24 11:03:43] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-08-24 11:03:43] Scanning host for browser binaries...
+[2026-08-24 11:03:44] Found candidate browser in Flatpak: 'com.microsoft.Edge'
+[2026-08-24 11:03:44] =================================================================
+[2026-08-24 11:03:44]  Launching Browser Subprocess
+[2026-08-24 11:03:44]  Command         : /usr/bin/flatpak run com.microsoft.Edge --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=/tmp/ScreenShare_browser_profile --test-type --no-sandbox --disable-dev-shm-usage --disable-vulkan --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan --use-fake-ui-for-media-stream --auto-select-desktop-capture-source=Entire screen --enable-usermedia-screen-capturing --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-08-24 11:03:44]  Profile Dir     : /tmp/ScreenShare_browser_profile
+[2026-08-24 11:03:44]  DISPLAY         : :0
+[2026-08-24 11:03:44]  WAYLAND_DISPLAY : wayland-0
+[2026-08-24 11:03:44]  XDG_DATA_DIRS   : /var/home/steam/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+[2026-08-24 11:03:44] =================================================================
+[2026-08-24 11:03:47] Browser process is active and running normally.
+[2026-08-24 11:03:50] [Browser stderr] [57:57:0824/110350.391169:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:249] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
+[2026-08-24 11:04:57] [Browser stderr] [107:134:0824/110457.755495:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209ad80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:04:57] [Browser stderr] [107:134:0824/110457.756383:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209c600:1:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:04:58] [Browser stderr] [107:134:0824/110458.015047:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209ad80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:04:58] [Browser stderr] [107:134:0824/110458.015500:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209c600:1:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:04:58] [Browser stderr] [107:134:0824/110458.529415:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209ad80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:04:58] [Browser stderr] [107:134:0824/110458.529957:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209c600:1:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:04:59] [Browser stderr] [107:134:0824/110459.572645:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209ad80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:01] [Browser stderr] [107:134:0824/110501.560664:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209ad80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:02] [Browser stderr] [107:134:0824/110502.911798:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[2098a80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:02] [Browser stderr] [107:134:0824/110502.912765:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209de80:1:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:03] [Browser stderr] [107:134:0824/110503.170823:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[2098a80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:03] [Browser stderr] [107:134:0824/110503.171154:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209de80:1:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:03] [Browser stderr] [107:134:0824/110503.685553:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[2098a80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:04] [Browser stderr] [107:134:0824/110504.702547:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[2098a80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:05] [Browser stderr] [107:134:0824/110505.582093:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209ad80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:06] [Browser stderr] [107:134:0824/110506.721606:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[2098a80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:10] [Browser stderr] [107:134:0824/110510.734622:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[2098a80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:13] [Browser stderr] [107:134:0824/110513.599022:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209ad80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:18] [Browser stderr] [107:134:0824/110518.748645:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[2098a80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:21] [Browser stderr] [107:134:0824/110521.608906:ERROR:third_party/webrtc/p2p/base/port.cc:368] Port[209ad80:0:1:0:host:Net[Mihomo:198.18.0.x/30:Ethernet:id=1]]: Received non-STUN packet from unknown address: 198.18.0.x:3478
+[2026-08-24 11:05:24] Application shutdown initiated. Cleaning up subprocesses...
+[2026-08-24 11:05:24] Cleanup finished. ScreenShare Host terminated.

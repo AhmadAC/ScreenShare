@@ -357,7 +357,7 @@ def detect_lan_ip():
     return "127.0.0.1"
 
 def kill_port_owners():
-    """Terminates any stale processes using Screego/Control ports."""
+    """Terminates any stale processes using ScreenShare/Control ports."""
     ports = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
     for port in ports:
         subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -477,7 +477,7 @@ def run_http_server():
     server.serve_forever()
 
 def find_or_build_binary():
-    """Locates ScreenShare or screego binary across search directories or auto-builds it."""
+    """Locates ScreenShare binary across search directories or auto-builds it."""
     search_dirs = [
         os.path.join(BASE_DIR, "server"),
         BASE_DIR,
@@ -487,7 +487,7 @@ def find_or_build_binary():
         os.path.dirname(BASE_DIR)
     ]
 
-    target_names = ["ScreenShare", "screenshare", "screego"]
+    target_names = ["ScreenShare", "screenshare"]
 
     for d in search_dirs:
         for name in target_names:
@@ -574,7 +574,7 @@ def stream_process_logs(proc, prefix_label):
     if proc.stderr:
         threading.Thread(target=read_stream, args=(proc.stderr, "stderr"), daemon=True).start()
 
-def start_screego_server(lan_ip):
+def start_screenshare_server(lan_ip):
     """Spawns the Go backend binary, enabling TURN relay and persistent rooms."""
     server_bin = find_or_build_binary()
 
@@ -602,7 +602,6 @@ def start_screego_server(lan_ip):
         "LOG_LEVEL": "info",
     }
     for k, v in configs.items():
-        env[f"SCREEGO_{k}"] = v
         env[f"SCREENSHARE_{k}"] = v
     
     users_candidates = [
@@ -615,7 +614,6 @@ def start_screego_server(lan_ip):
     for u_path in users_candidates:
         if os.path.isfile(u_path):
             abs_u = os.path.abspath(u_path)
-            env["SCREEGO_USERS_FILE"] = abs_u
             env["SCREENSHARE_USERS_FILE"] = abs_u
             break
 
@@ -1098,7 +1096,7 @@ if __name__ == '__main__':
 
     setup_pipewire_audio()
 
-    server_proc = start_screego_server(lan_ip)
+    server_proc = start_screenshare_server(lan_ip)
     
     wait_for_server(f"http://127.0.0.1:5050/health", timeout=6.0)
 
