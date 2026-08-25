@@ -315,20 +315,18 @@ export const useRoom = (config: UIConfig): UseRoom => {
                             );
                     }
                 };
-                ws.onclose = (event) => {
+                ws.onclose = () => {
                     if (first) {
                         resolve();
                         first = false;
                     }
-                    enqueueSnackbar(event.reason, {variant: 'error', persist: true});
                     setState(false);
                 };
-                ws.onerror = (err) => {
+                ws.onerror = () => {
                     if (first) {
                         resolve();
                         first = false;
                     }
-                    enqueueSnackbar(err?.toString(), {variant: 'error', persist: true});
                     setState(false);
                 };
                 ws.onopen = () => {

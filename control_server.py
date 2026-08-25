@@ -446,6 +446,33 @@ def cleanup_audio():
     if original_default_source:
         run_audio_cmd(["pactl", "set-default-source", original_default_source])
 
+def sync_audio_volume():
+    """Continuously syncs the default sink volume to the VirtualMic."""
+    clean_env = get_clean_host_env()
+    try:
+        # First sync on startup
+        res = subprocess.run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"], stdout=subprocess.PIPE, text=True, env=clean_env)
+        if res.stdout:
+            parts = res.stdout.split('/')
+            if len(parts) > 1:
+                vol_str = parts[1].strip()
+                source = active_audio_source_name or "VirtualMic"
+                subprocess.run(["pactl", "set-source-volume", source, vol_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
+
+        # Then subscribe to pactl changes
+        proc = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, text=True, env=clean_env)
+        for line in iter(proc.stdout.readline, ''):
+            if "change" in line and "sink" in line:
+                res = subprocess.run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"], stdout=subprocess.PIPE, text=True, env=clean_env)
+                if res.stdout:
+                    parts = res.stdout.split('/')
+                    if len(parts) > 1:
+                        vol_str = parts[1].strip()
+                        source = active_audio_source_name or "VirtualMic"
+                        subprocess.run(["pactl", "set-source-volume", source, vol_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
+    except Exception as e:
+        pass
+
 class CommSignals(QObject):
     state_updated = Signal(dict)
 
@@ -1123,10 +1150,19 @@ class OverlayToolbar(QWidget):
                 self.btn_pause.setText("Resume")
                 self.btn_pause.setStyleSheet("background-color: #fabd2f; color: black;")
                 self.set_indicator_color("#fabd2f")
+                
+                # Mute the mic when paused
+                source_to_mute = active_audio_source_name or "VirtualMic"
+                run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "1"])
             else:
                 self.btn_pause.setText("Pause")
                 self.btn_pause.setStyleSheet("")
                 self.set_indicator_color("#fe8019")
+                
+                # Unmute the mic when resumed (only if not explicitly muted via the mute button)
+                if not self.audio_muted:
+                    source_to_mute = active_audio_source_name or "VirtualMic"
+                    run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "0"])
         else:
             self.btn_share.setText("Share")
             self.btn_share.setStyleSheet("")
@@ -1170,6 +1206,10 @@ if __name__ == '__main__':
     http_thread = threading.Thread(target=run_http_server, daemon=True)
     http_thread.start()
     log(f"Local control bridge HTTP server listening on 127.0.0.1:{PORT}")
+
+    sync_thread = threading.Thread(target=sync_audio_volume, daemon=True)
+    sync_thread.start()
+    log("Audio sync thread started (mirroring sink volume to VirtualMic)")
 
     room_url = f"http://127.0.0.1:5050/?room={ROOM_NAME}&create=true"
     browser_proc = launch_hidden_browser(room_url)
