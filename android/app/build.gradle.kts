@@ -47,7 +47,7 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
-    // High performance official Android WebRTC build
+    // High performance Android WebRTC build
     implementation("io.getstream:stream-webrtc-android:1.3.4")
 
     // WebSocket and Networking

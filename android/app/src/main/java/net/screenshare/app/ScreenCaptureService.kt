@@ -1,6 +1,10 @@
 package net.screenshare.app
 
-import android.app.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -32,11 +36,12 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
         serverUrl = intent.getStringExtra(EXTRA_SERVER_URL) ?: "127.0.0.1:5050"
         roomId = intent.getStringExtra(EXTRA_ROOM_ID) ?: "a"
         username = intent.getStringExtra(EXTRA_USERNAME) ?: "Android Host"
-        val captureIntentData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+
+        val captureIntentData: Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
         } else {
             @Suppress("DEPRECATION")
-            intent.getParcelableExtra(EXTRA_RESULT_DATA)
+            intent.getParcelableExtra(EXTRA_RESULT_DATA) as? Intent
         }
 
         if (captureIntentData == null) {
@@ -74,9 +79,9 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
     }
 
     private fun createNotification(): Notification {
-        val stopIntent = Intent(this, ScreenCaptureService::class.java).apply {
-            action = ACTION_STOP
-        }
+        val stopIntent = Intent(this, ScreenCaptureService::class.java)
+        stopIntent.action = ACTION_STOP
+
         val stopPendingIntent = PendingIntent.getService(
             this,
             0,
@@ -161,11 +166,10 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
     }
 
     private fun broadcastState(state: String, errorMsg: String? = null) {
-        val intent = Intent(BROADCAST_STATE_CHANGE).apply {
-            putExtra(EXTRA_STATE, state)
-            if (errorMsg != null) putExtra(EXTRA_ERROR_MSG, errorMsg)
-            setPackage(packageName)
-        }
+        val intent = Intent(BROADCAST_STATE_CHANGE)
+        intent.putExtra(EXTRA_STATE, state)
+        if (errorMsg != null) intent.putExtra(EXTRA_ERROR_MSG, errorMsg)
+        intent.setPackage(packageName)
         sendBroadcast(intent)
     }
 

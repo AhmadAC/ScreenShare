@@ -106,21 +106,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startCaptureService(resultData: Intent) {
-        val serviceIntent = Intent(this, ScreenCaptureService::class.java).apply {
-            putExtra(ScreenCaptureService.EXTRA_RESULT_DATA, resultData)
-            putExtra(ScreenCaptureService.EXTRA_SERVER_URL, binding.etServerUrl.text.toString().trim())
-            putExtra(ScreenCaptureService.EXTRA_ROOM_ID, binding.etRoomId.text.toString().trim())
-            putExtra(ScreenCaptureService.EXTRA_USERNAME, binding.etUsername.text.toString().trim())
-        }
+        val serviceIntent = Intent(this, ScreenCaptureService::class.java)
+        serviceIntent.putExtra(ScreenCaptureService.EXTRA_RESULT_DATA, resultData)
+        serviceIntent.putExtra(ScreenCaptureService.EXTRA_SERVER_URL, binding.etServerUrl.text.toString().trim())
+        serviceIntent.putExtra(ScreenCaptureService.EXTRA_ROOM_ID, binding.etRoomId.text.toString().trim())
+        serviceIntent.putExtra(ScreenCaptureService.EXTRA_USERNAME, binding.etUsername.text.toString().trim())
 
         ContextCompat.startForegroundService(this, serviceIntent)
         updateUI(true, getString(R.string.status_connecting))
     }
 
     private fun stopCaptureService() {
-        val serviceIntent = Intent(this, ScreenCaptureService::class.java).apply {
-            action = ScreenCaptureService.ACTION_STOP
-        }
+        val serviceIntent = Intent(this, ScreenCaptureService::class.java)
+        serviceIntent.action = ScreenCaptureService.ACTION_STOP
         startService(serviceIntent)
         updateUI(false, getString(R.string.status_idle))
     }

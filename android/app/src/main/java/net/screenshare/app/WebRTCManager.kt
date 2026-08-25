@@ -6,8 +6,24 @@ import android.media.projection.MediaProjection
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
-import org.webrtc.*
+import org.webrtc.DataChannel
+import org.webrtc.DefaultVideoDecoderFactory
+import org.webrtc.DefaultVideoEncoderFactory
+import org.webrtc.EglBase
+import org.webrtc.IceCandidate
+import org.webrtc.MediaConstraints
+import org.webrtc.MediaStream
+import org.webrtc.PeerConnection
+import org.webrtc.PeerConnectionFactory
+import org.webrtc.RtpReceiver
+import org.webrtc.ScreenCapturerAndroid
+import org.webrtc.SdpObserver
+import org.webrtc.SessionDescription
+import org.webrtc.SurfaceTextureHelper
+import org.webrtc.VideoSource
+import org.webrtc.VideoTrack
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.max
 
 class WebRTCManager(
     private val context: Context,
@@ -62,17 +78,17 @@ class WebRTCManager(
         @Suppress("DEPRECATION")
         wm.defaultDisplay.getRealMetrics(metrics)
 
-        // Capture at native resolution up to 1080p, 60fps for ultra fluid code/screen presentation
         var width = metrics.widthPixels
         var height = metrics.heightPixels
         val maxDim = 1920
         if (width > maxDim || height > maxDim) {
-            val scale = maxDim.toFloat() / maxOf(width, height)
-            width = (width * scale).toInt()
-            height = (height * scale).toInt()
+            val maxSide = max(width, height)
+            val scale = maxDim.toFloat() / maxSide.toFloat()
+            width = (width.toFloat() * scale).toInt()
+            height = (height.toFloat() * scale).toInt()
         }
 
-        // Align dimensions to 16 for H.264 / VP8 hardware encoder alignment
+        // Align dimensions to 16 for hardware encoder alignment
         width = width and 15.inv()
         height = height and 15.inv()
 
@@ -90,20 +106,19 @@ class WebRTCManager(
         onIceCandidate: (IceCandidatePayload) -> Unit,
         onOfferCreated: (SessionDescription) -> Unit
     ): PeerConnection? {
-        val iceServers = iceServersConfig.map { cfg ->
+        val iceServers: List<PeerConnection.IceServer> = iceServersConfig.map { cfg ->
             val builder = PeerConnection.IceServer.builder(cfg.urls)
             if (!cfg.username.isNullOrEmpty()) builder.setUsername(cfg.username)
             if (!cfg.credential.isNullOrEmpty()) builder.setPassword(cfg.credential)
             builder.createIceServer()
         }
 
-        val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
-            sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
-            continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
-            enableDtlsSrtp = true
-        }
+        val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
+        rtcConfig.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+        rtcConfig.continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+        rtcConfig.enableDtlsSrtp = true
 
-        val pc = peerConnectionFactory.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
+        val pc: PeerConnection? = peerConnectionFactory.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
             override fun onIceCandidate(candidate: IceCandidate) {
                 onIceCandidate(
                     IceCandidatePayload(
@@ -157,7 +172,7 @@ class WebRTCManager(
                 override fun onSetFailure(err: String?) {}
             }, constraints)
 
-            peerConnections[sid] = pc
+            peerConnections.put(sid, pc)
         }
 
         return pc
