@@ -1,3 +1,4 @@
+# Control_server.py
 import os
 import sys
 import json
@@ -12,8 +13,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from socketserver import ThreadingTCPServer
 import urllib.request
 
-# Allow Qt to use xcb fallback on Wayland for 100% overlay compatibility
-if "QT_QPA_PLATFORM" not in os.environ:
+# Allow Qt to use xcb fallback on Wayland for 100% overlay compatibility on Linux
+if sys.platform.startswith("linux") and "QT_QPA_PLATFORM" not in os.environ:
     os.environ["QT_QPA_PLATFORM"] = "xcb;wayland"
 
 from PySide6.QtCore import Qt, QObject, Signal, QPoint
@@ -278,6 +279,9 @@ def get_qr_pixmap(text: str):
 def get_clean_host_env():
     """Strips AppImage and PyInstaller specific variables so host processes don't crash."""
     env = os.environ.copy()
+    if sys.platform.startswith("win"):
+        return env
+
     vars_to_remove = [
         "LD_LIBRARY_PATH",
         "LD_PRELOAD",
@@ -338,31 +342,32 @@ def get_clean_host_env():
 
 def detect_lan_ip():
     """Automatically detects the real Wi-Fi / Ethernet IPv4 address, filtering out virtual/TUN subnets."""
-    clean_env = get_clean_host_env()
-    try:
-        res = subprocess.run(["ip", "-4", "-o", "addr", "show"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
-        candidates = []
-        for line in res.stdout.strip().split("\n"):
-            if not line:
-                continue
-            parts = line.split()
-            if len(parts) >= 4:
-                ifname = parts[1]
-                ip = parts[3].split("/")[0]
-                
-                if ip.startswith("127.") or ip.startswith("198.18.") or ip.startswith("169.254."):
+    if sys.platform.startswith("linux"):
+        clean_env = get_clean_host_env()
+        try:
+            res = subprocess.run(["ip", "-4", "-o", "addr", "show"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
+            candidates = []
+            for line in res.stdout.strip().split("\n"):
+                if not line:
                     continue
-                if any(ifname.startswith(p) for p in ["lo", "docker", "veth", "br-", "tun", "tap", "wg", "tailscale"]):
-                    continue
-                candidates.append((ifname, ip))
+                parts = line.split()
+                if len(parts) >= 4:
+                    ifname = parts[1]
+                    ip = parts[3].split("/")[0]
+                    
+                    if ip.startswith("127.") or ip.startswith("198.18.") or ip.startswith("169.254."):
+                        continue
+                    if any(ifname.startswith(p) for p in ["lo", "docker", "veth", "br-", "tun", "tap", "wg", "tailscale"]):
+                        continue
+                    candidates.append((ifname, ip))
 
-        for ifname, ip in candidates:
-            if ifname.startswith("wl") or ifname.startswith("eth") or ifname.startswith("en"):
-                return ip
-        if candidates:
-            return candidates[0][1]
-    except Exception:
-        pass
+            for ifname, ip in candidates:
+                if ifname.startswith("wl") or ifname.startswith("eth") or ifname.startswith("en"):
+                    return ip
+            if candidates:
+                return candidates[0][1]
+        except Exception:
+            pass
 
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -378,6 +383,8 @@ def detect_lan_ip():
 
 def kill_port_owners():
     """Terminates any stale processes using ScreenShare/Control ports."""
+    if not sys.platform.startswith("linux"):
+        return
     clean_env = get_clean_host_env()
     ports = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
     for port in ports:
@@ -385,6 +392,8 @@ def kill_port_owners():
 
 def run_audio_cmd(args):
     """Executes pactl commands directly."""
+    if not sys.platform.startswith("linux"):
+        return
     clean_env = get_clean_host_env()
     try:
         subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
@@ -396,7 +405,9 @@ remap_module_id = None
 active_audio_source_name = None
 
 def setup_pipewire_audio():
-    """Sets up virtual audio sink / mic monitoring for screen sharing."""
+    """Sets up virtual audio sink / mic monitoring for screen sharing on Linux."""
+    if not sys.platform.startswith("linux"):
+        return
     global original_default_source, remap_module_id, active_audio_source_name
     clean_env = get_clean_host_env()
     try:
@@ -433,7 +444,9 @@ def setup_pipewire_audio():
         log(f"Warning: Audio setup encountered: {e}")
 
 def cleanup_audio():
-    """Restores the original audio default source."""
+    """Restores the original audio default source on Linux."""
+    if not sys.platform.startswith("linux"):
+        return
     global original_default_source, remap_module_id
     if remap_module_id:
         run_audio_cmd(["pactl", "unload-module", remap_module_id])
@@ -444,10 +457,11 @@ def cleanup_audio():
         run_audio_cmd(["pactl", "set-default-source", original_default_source])
 
 def sync_audio_volume():
-    """Continuously syncs the default sink volume to the VirtualMic."""
+    """Continuously syncs the default sink volume to the VirtualMic on Linux."""
+    if not sys.platform.startswith("linux"):
+        return
     clean_env = get_clean_host_env()
     try:
-        # First sync on startup
         res = subprocess.run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"], stdout=subprocess.PIPE, text=True, env=clean_env)
         if res.stdout:
             parts = res.stdout.split('/')
@@ -456,7 +470,6 @@ def sync_audio_volume():
                 source = active_audio_source_name or "VirtualMic"
                 subprocess.run(["pactl", "set-source-volume", source, vol_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
 
-        # Then subscribe to pactl changes
         proc = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, text=True, env=clean_env)
         for line in iter(proc.stdout.readline, ''):
             if "change" in line and "sink" in line:
@@ -467,7 +480,7 @@ def sync_audio_volume():
                         vol_str = parts[1].strip()
                         source = active_audio_source_name or "VirtualMic"
                         subprocess.run(["pactl", "set-source-volume", source, vol_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
-    except Exception as e:
+    except Exception:
         pass
 
 class CommSignals(QObject):
@@ -534,17 +547,15 @@ def needs_rebuild(src_dir, out_bin):
     bin_mtime = os.path.getmtime(out_bin)
     ui_src = os.path.join(src_dir, "ui", "src")
     
-    # Check UI files
     if os.path.isdir(ui_src):
         for root, _, files in os.walk(ui_src):
             for f in files:
                 if os.path.getmtime(os.path.join(root, f)) > bin_mtime:
                     return True
                     
-    # Check Go files
     for root, dirs, files in os.walk(src_dir):
         if "ui" in dirs: 
-            dirs.remove("ui") # Skip looking at the UI folder for go modifications
+            dirs.remove("ui")
         for f in files:
             if f.endswith(".go") and os.path.getmtime(os.path.join(root, f)) > bin_mtime:
                 return True
@@ -562,24 +573,22 @@ def find_or_build_binary():
         os.path.dirname(BASE_DIR)
     ]
 
-    target_names = ["ScreenShare", "screenshare"]
+    target_names = ["ScreenShare.exe", "ScreenShare", "screenshare.exe", "screenshare"]
 
-    # Locate source directory
     src_dir = None
     for d in search_dirs:
         if os.path.isfile(os.path.join(d, "main.go")):
             src_dir = d
             break
 
-    # If we have source code, detect if we need a rebuild
     if src_dir:
-        out_bin = os.path.join(src_dir, "ScreenShare")
+        bin_filename = "ScreenShare.exe" if sys.platform.startswith("win") else "ScreenShare"
+        out_bin = os.path.join(src_dir, bin_filename)
         if needs_rebuild(src_dir, out_bin):
             log("========================================")
             log("Source files modified. Triggering React/Go re-compilation...")
             log("========================================")
             
-            # Rebuild Frontend
             deno_bins = [
                 shutil.which("deno"),
                 os.path.expanduser("~/.deno/bin/deno"),
@@ -594,7 +603,6 @@ def find_or_build_binary():
                 subprocess.run([deno_cmd, "install"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 subprocess.run([deno_cmd, "task", "build"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-            # Rebuild Backend
             go_bins = [
                 shutil.which("go"),
                 os.path.expanduser("~/.local/go/bin/go"),
@@ -602,7 +610,7 @@ def find_or_build_binary():
                 "/usr/local/go/bin/go",
                 "/usr/bin/go"
             ]
-            go_cmd = next((g for g in go_bins if g and os.path.isfile(go_cmd or "")), None)
+            go_cmd = next((g for g in go_bins if g and os.path.isfile(g or "")), None)
             
             if go_cmd:
                 log("Compiling Go binary...")
@@ -616,18 +624,18 @@ def find_or_build_binary():
                     env=env
                 )
                 if build_res.returncode == 0 and os.path.isfile(out_bin):
-                    os.chmod(out_bin, 0o755)
+                    if not sys.platform.startswith("win"):
+                        os.chmod(out_bin, 0o755)
                     log("Build successful.")
                     return out_bin
                 else:
                     log(f"Go build failed: {build_res.stderr}")
 
-    # Fallback to prebuilt binary search
     for d in search_dirs:
         for name in target_names:
             bin_path = os.path.join(d, name)
             if os.path.isfile(bin_path):
-                if not os.access(bin_path, os.X_OK):
+                if not sys.platform.startswith("win") and not os.access(bin_path, os.X_OK):
                     try:
                         os.chmod(bin_path, 0o755)
                     except Exception:
@@ -732,6 +740,26 @@ def wait_for_server(url, timeout=6.0):
 def find_browser_executable():
     """Searches for Microsoft Edge, Chrome, or Chromium across host paths, Snaps, and Flatpaks."""
     clean_env = get_clean_host_env()
+
+    if sys.platform.startswith("win"):
+        win_candidates = [
+            shutil.which("msedge"),
+            shutil.which("chrome"),
+            shutil.which("brave"),
+            os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Microsoft\\Edge\\Application\\msedge.exe"),
+            os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Microsoft\\Edge\\Application\\msedge.exe"),
+            os.path.join(os.environ.get("LocalAppData", ""), "Microsoft\\Edge\\Application\\msedge.exe"),
+            os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "Google\\Chrome\\Application\\chrome.exe"),
+            os.path.join(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"), "Google\\Chrome\\Application\\chrome.exe"),
+            os.path.join(os.environ.get("LocalAppData", ""), "Google\\Chrome\\Application\\chrome.exe"),
+            os.path.join(os.environ.get("ProgramFiles", "C:\\Program Files"), "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+        ]
+        for path in win_candidates:
+            if path and os.path.isfile(path):
+                log(f"Found Windows browser: '{path}'")
+                return [path]
+        return None
+
     search_binaries = [
         "microsoft-edge-stable",
         "microsoft-edge",
@@ -1185,7 +1213,6 @@ class OverlayToolbar(QWidget):
                 self.btn_pause.setStyleSheet("background-color: #fabd2f; color: black;")
                 self.set_indicator_color("#fabd2f")
                 
-                # Mute the mic when paused
                 source_to_mute = active_audio_source_name or "VirtualMic"
                 run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "1"])
             else:
@@ -1193,7 +1220,6 @@ class OverlayToolbar(QWidget):
                 self.btn_pause.setStyleSheet("")
                 self.set_indicator_color("#fe8019")
                 
-                # Unmute the mic when resumed (only if not explicitly muted via the mute button)
                 if not self.audio_muted:
                     source_to_mute = active_audio_source_name or "VirtualMic"
                     run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "0"])

@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">ScreenShare</string>
+    <string name="server_url_hint">Server Address (e.g. 192.168.1.100:5050)</string>
+    <string name="room_id_hint">Room Name</string>
+    <string name="username_hint">Your Display Name</string>
+    <string name="start_sharing">Start Screen Share</string>
+    <string name="stop_sharing">Stop Screen Share</string>
+    <string name="status_idle">Status: Ready to broadcast</string>
+    <string name="status_connecting">Status: Connecting to ScreenShare server…</string>
+    <string name="status_broadcasting">Status: Broadcasting screen in real-time</string>
+    <string name="status_error">Status: Connection error</string>
+    <string name="notification_channel_name">ScreenShare Live Broadcasting</string>
+    <string name="notification_title">ScreenShare Host Active</string>
+    <string name="notification_text">Your screen is being broadcasted over WebRTC</string>
+</resources>

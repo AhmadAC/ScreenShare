@@ -404,3 +404,10 @@
 [2026-08-25 08:20:52] [Browser stderr] [55:55:0825/082052.624374:ERROR:ui/ozone/platform/wayland/gpu/wayland_surface_factory.cc:249] '--ozone-platform=wayland' is not compatible with Vulkan. Consider switching to '--ozone-platform=x11' or disabling Vulkan
 [2026-08-25 08:21:38] Application shutdown initiated. Cleaning up subprocesses...
 [2026-08-25 08:21:38] Cleanup finished. ScreenShare Host terminated.
+[2026-08-25 15:08:20] =================================================================
+[2026-08-25 15:08:20]  ScreenShare Host Starting
+[2026-08-25 15:08:20]  Execution Working Dir : E:\2027\ComputerScripts\server
+[2026-08-25 15:08:20]  Log File Location     : E:\2027\ComputerScripts\server\ScreenShare-host.log
+[2026-08-25 15:08:20]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-08-25 15:08:20]  Frozen bundle status  : False
+[2026-08-25 15:08:20] =================================================================
