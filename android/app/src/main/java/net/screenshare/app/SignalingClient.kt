@@ -33,27 +33,31 @@ class SignalingClient(
     private var webSocket: WebSocket? = null
 
     fun connect() {
-        val wsUrl = when {
-            serverUrl.startsWith("ws://") || serverUrl.startsWith("wss://") -> {
-                if (serverUrl.endsWith("/stream")) serverUrl else "$serverUrl/stream"
-            }
-            serverUrl.startsWith("http://") -> {
-                val base = serverUrl.removePrefix("http://").trimEnd('/')
-                "ws://$base/stream"
-            }
-            serverUrl.startsWith("https://") -> {
-                val base = serverUrl.removePrefix("https://").trimEnd('/')
-                "wss://$base/stream"
-            }
-            else -> "ws://${serverUrl.trimEnd('/')}/stream"
+        var cleanInput = serverUrl.trim()
+        val isSecure = cleanInput.startsWith("https://") || cleanInput.startsWith("wss://")
+
+        cleanInput = cleanInput
+            .removePrefix("http://")
+            .removePrefix("https://")
+            .removePrefix("ws://")
+            .removePrefix("wss://")
+
+        if (cleanInput.contains("?")) {
+            cleanInput = cleanInput.substringBefore("?")
         }
+        if (cleanInput.contains("/")) {
+            cleanInput = cleanInput.substringBefore("/")
+        }
+
+        val scheme = if (isSecure) "wss://" else "ws://"
+        val wsUrl = "$scheme$cleanInput/stream"
 
         Log.d(TAG, "Connecting to WebSocket: $wsUrl")
         val request = Request.Builder().url(wsUrl).build()
 
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                Log.d(TAG, "WebSocket Connected")
+                Log.d(TAG, "WebSocket Connected successfully to $wsUrl")
                 listener.onConnected()
             }
 
@@ -63,8 +67,9 @@ class SignalingClient(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "WebSocket Failure: ${t.message}", t)
-                listener.onError(t.message ?: "Connection error")
+                val errorMsg = t.message ?: "Connection failed (Check if Host PC IP & Port 5050 are reachable)"
+                Log.e(TAG, "WebSocket Failure: $errorMsg", t)
+                listener.onError(errorMsg)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -104,12 +109,12 @@ class SignalingClient(
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error handling message", e)
+            Log.e(TAG, "Error handling message: $text", e)
         }
     }
 
     fun sendCreateRoom(roomId: String, username: String) {
-        val payload = CreateRoomPayload(id = roomId, username = username)
+        val payload = CreateRoomPayload(id = roomId, username = username, mode = "stun")
         send("create", gson.toJsonTree(payload))
     }
 

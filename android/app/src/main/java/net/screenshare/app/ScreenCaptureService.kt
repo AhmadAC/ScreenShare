@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import kotlin.concurrent.thread
 
 class ScreenCaptureService : Service(), SignalingClient.Listener {
 
@@ -20,6 +21,8 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
     private var serverUrl: String = ""
     private var roomId: String = ""
     private var username: String = ""
+    private var isHostServer: Boolean = false
+    private var localIp: String = "127.0.0.1"
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -36,6 +39,8 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
         serverUrl = intent.getStringExtra(EXTRA_SERVER_URL) ?: "127.0.0.1:5050"
         roomId = intent.getStringExtra(EXTRA_ROOM_ID) ?: "a"
         username = intent.getStringExtra(EXTRA_USERNAME) ?: "Android Host"
+        isHostServer = intent.getBooleanExtra(EXTRA_HOST_SERVER, false)
+        localIp = intent.getStringExtra(EXTRA_LOCAL_IP) ?: "127.0.0.1"
 
         val captureIntentData: Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
@@ -69,18 +74,27 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
 
         broadcastState(STATE_CONNECTING)
 
-        rtcManager = WebRTCManager(applicationContext, captureIntentData)
-        rtcManager?.startScreenCapture()
+        thread(name = "ScreenCaptureStartup", isDaemon = true) {
+            if (isHostServer) {
+                Log.i(TAG, "Starting embedded server on $localIp:5050...")
+                EmbeddedServerManager.startServer(applicationContext, localIp)
+            }
 
-        signalingClient = SignalingClient(serverUrl, this)
-        signalingClient?.connect()
+            rtcManager = WebRTCManager(applicationContext, captureIntentData)
+            rtcManager?.startScreenCapture()
+
+            val targetSignalingUrl = if (isHostServer) "127.0.0.1:5050" else serverUrl
+            signalingClient = SignalingClient(targetSignalingUrl, this)
+            signalingClient?.connect()
+        }
 
         return START_STICKY
     }
 
     private fun createNotification(): Notification {
-        val stopIntent = Intent(this, ScreenCaptureService::class.java)
-        stopIntent.action = ACTION_STOP
+        val stopIntent = Intent(this, ScreenCaptureService::class.java).apply {
+            action = ACTION_STOP
+        }
 
         val stopPendingIntent = PendingIntent.getService(
             this,
@@ -89,9 +103,11 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val viewerText = if (isHostServer) "Viewers: http://$localIp:5050/?room=$roomId" else getString(R.string.notification_text)
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.notification_title))
-            .setContentText(getString(R.string.notification_text))
+            .setContentText(viewerText)
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setOngoing(true)
             .addAction(android.R.drawable.ic_delete, "Stop Sharing", stopPendingIntent)
@@ -162,14 +178,19 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
         rtcManager?.stop()
         rtcManager = null
 
+        if (isHostServer) {
+            EmbeddedServerManager.stopServer()
+        }
+
         broadcastState(STATE_IDLE)
     }
 
     private fun broadcastState(state: String, errorMsg: String? = null) {
-        val intent = Intent(BROADCAST_STATE_CHANGE)
-        intent.putExtra(EXTRA_STATE, state)
-        if (errorMsg != null) intent.putExtra(EXTRA_ERROR_MSG, errorMsg)
-        intent.setPackage(packageName)
+        val intent = Intent(BROADCAST_STATE_CHANGE).apply {
+            putExtra(EXTRA_STATE, state)
+            if (errorMsg != null) putExtra(EXTRA_ERROR_MSG, errorMsg)
+            setPackage(packageName)
+        }
         sendBroadcast(intent)
     }
 
@@ -188,6 +209,8 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
         const val EXTRA_SERVER_URL = "EXTRA_SERVER_URL"
         const val EXTRA_ROOM_ID = "EXTRA_ROOM_ID"
         const val EXTRA_USERNAME = "EXTRA_USERNAME"
+        const val EXTRA_HOST_SERVER = "EXTRA_HOST_SERVER"
+        const val EXTRA_LOCAL_IP = "EXTRA_LOCAL_IP"
 
         const val BROADCAST_STATE_CHANGE = "net.screenshare.app.STATE_CHANGE"
         const val EXTRA_STATE = "EXTRA_STATE"

@@ -10,7 +10,7 @@ data class SignalingMessage(
 
 data class CreateRoomPayload(
     @SerializedName("id") val id: String,
-    @SerializedName("mode") val mode: String = "turn",
+    @SerializedName("mode") val mode: String = "stun",
     @SerializedName("closeOnOwnerLeave") val closeOnOwnerLeave: Boolean = false,
     @SerializedName("username") val username: String,
     @SerializedName("joinIfExist") val joinIfExist: Boolean = true
