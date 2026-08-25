@@ -106,6 +106,8 @@ class WebRTCManager(
         onIceCandidate: (IceCandidatePayload) -> Unit,
         onOfferCreated: (SessionDescription) -> Unit
     ): PeerConnection? {
+        peerConnections.remove(sid)?.dispose()
+
         val iceServers: List<PeerConnection.IceServer> = iceServersConfig.map { cfg ->
             val builder = PeerConnection.IceServer.builder(cfg.urls)
             if (!cfg.username.isNullOrEmpty()) builder.setUsername(cfg.username)
@@ -171,7 +173,7 @@ class WebRTCManager(
                 override fun onSetFailure(err: String?) {}
             }, constraints)
 
-            peerConnections.put(sid, pc)
+            peerConnections[sid] = pc
         }
 
         return pc

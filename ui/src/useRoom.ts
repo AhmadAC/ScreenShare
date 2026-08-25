@@ -225,6 +225,11 @@ export const useRoom = (config: UIConfig): UseRoom => {
                                 if (origVid) activeStream.addTrack(origVid);
                             }
 
+                            if (host.current[event.payload.id]) {
+                                host.current[event.payload.id].close();
+                                delete host.current[event.payload.id];
+                            }
+
                             hostSession({
                                 sid: event.payload.id,
                                 stream: activeStream,
@@ -237,6 +242,10 @@ export const useRoom = (config: UIConfig): UseRoom => {
                             return;
                         case 'clientsession':
                             const {id: sid, peer} = event.payload;
+                            if (client.current[sid]) {
+                                client.current[sid].close();
+                                delete client.current[sid];
+                            }
                             clientSession({
                                 sid,
                                 send,
@@ -255,21 +264,23 @@ export const useRoom = (config: UIConfig): UseRoom => {
                                     );
                                 },
                                 onTrack: (inStream) =>
-                                    setState((current) =>
-                                        current
-                                            ? {
-                                                  ...current,
-                                                  clientStreams: [
-                                                      ...current.clientStreams,
-                                                      {
-                                                          id: sid,
-                                                          stream: inStream,
-                                                          peer_id: peer,
-                                                      },
-                                                  ],
-                                              }
-                                            : current
-                                    ),
+                                    setState((current) => {
+                                        if (!current) return current;
+                                        const deduplicated = current.clientStreams.filter(
+                                            (s) => s.id !== sid && s.peer_id !== peer
+                                        );
+                                        return {
+                                            ...current,
+                                            clientStreams: [
+                                                ...deduplicated,
+                                                {
+                                                    id: sid,
+                                                    stream: inStream,
+                                                    peer_id: peer,
+                                                },
+                                            ],
+                                        };
+                                    }),
                             }).then((newPeer) => (client.current[event.payload.id] = newPeer));
                             return;
                         case 'clientice':
@@ -302,6 +313,8 @@ export const useRoom = (config: UIConfig): UseRoom => {
                         case 'endshare':
                             client.current[event.payload]?.close();
                             host.current[event.payload]?.close();
+                            delete client.current[event.payload];
+                            delete host.current[event.payload];
                             setState((current) =>
                                 current
                                     ? {
@@ -334,7 +347,7 @@ export const useRoom = (config: UIConfig): UseRoom => {
                 };
             });
         },
-        [setState, enqueueSnackbar, setRoomID]
+        [setState, setRoomID]
     );
 
     const share = async () => {
@@ -344,7 +357,7 @@ export const useRoom = (config: UIConfig): UseRoom => {
         }
 
         try {
-            // 1. Capture screen video. We MUST request audio here to prevent Edge fake-ui crash
+            // 1. Capture screen video.
             let screenStream: MediaStream;
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -368,7 +381,6 @@ export const useRoom = (config: UIConfig): UseRoom => {
             screenStream.getAudioTracks().forEach((track) => track.stop());
 
             // 2. Capture real system audio via getUserMedia with all processing disabled
-            // Disabling processing prevents Edge WebRTC Acoustic Echo Cancellation from crashing
             try {
                 let audioStream: MediaStream | null = null;
                 try {
@@ -478,13 +490,12 @@ export const useRoom = (config: UIConfig): UseRoom => {
             
             const video = document.createElement('video');
             video.style.display = 'none';
-            document.body.appendChild(video); // Force render in active DOM so Chromium decodes frames
+            document.body.appendChild(video);
             video.srcObject = stream.current;
             video.muted = true;
             video.playsInline = true;
             
             try {
-                // Wait for the video feed first frame data to actually be available
                 await new Promise<void>((resolve, reject) => {
                     video.onloadeddata = () => {
                         video.play().then(resolve).catch(reject);
@@ -502,18 +513,16 @@ export const useRoom = (config: UIConfig): UseRoom => {
                 
                 video.pause();
                 video.srcObject = null;
-                video.remove(); // Cleanly remove the hidden video from the DOM
+                video.remove();
                 
                 const getStream = (canvas as any).captureStream || (canvas as any).mozCaptureStream;
                 if (!getStream) throw new Error('captureStream not supported in this browser');
                 
-                // Set fps to 5 keeping the connection alive whilst drastically lowering bandwidth
                 const frozenStream = getStream.call(canvas, 5);
                 const frozenVideoTrack = frozenStream.getVideoTracks()[0];
                 
                 pauseDataRef.current.frozenStream = frozenStream;
                 
-                // Periodic ping on the canvas. Keeps the stream active without black screening on obscure browsers
                 const staticImg = ctx?.getImageData(0, 0, canvas.width, canvas.height);
                 pauseDataRef.current.intervalId = window.setInterval(() => {
                     if (staticImg && ctx) ctx.putImageData(staticImg, 0, 0);

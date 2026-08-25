@@ -17,6 +17,7 @@ class SignalingClient(
     interface Listener {
         fun onConnected()
         fun onRoomJoined()
+        fun onRoomUpdated()
         fun onHostSessionReceived(session: HostSessionPayload)
         fun onClientAnswerReceived(sid: String, sdp: String)
         fun onClientIceCandidateReceived(sid: String, candidate: IceCandidatePayload)
@@ -31,8 +32,10 @@ class SignalingClient(
         .pingInterval(10, TimeUnit.SECONDS)
         .build()
     private var webSocket: WebSocket? = null
+    private var hasJoinedRoom = false
 
     fun connect() {
+        hasJoinedRoom = false
         var cleanInput = serverUrl.trim()
         val isSecure = cleanInput.startsWith("https://") || cleanInput.startsWith("wss://")
 
@@ -74,6 +77,7 @@ class SignalingClient(
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "WebSocket Closed: code=$code, reason=$reason")
+                hasJoinedRoom = false
                 listener.onDisconnected()
             }
         })
@@ -84,7 +88,12 @@ class SignalingClient(
             val base = gson.fromJson(text, SignalingMessage::class.java)
             when (base.type) {
                 "room" -> {
-                    listener.onRoomJoined()
+                    if (!hasJoinedRoom) {
+                        hasJoinedRoom = true
+                        listener.onRoomJoined()
+                    } else {
+                        listener.onRoomUpdated()
+                    }
                 }
                 "hostsession" -> {
                     val session = gson.fromJson(base.payload, HostSessionPayload::class.java)
@@ -147,6 +156,7 @@ class SignalingClient(
     fun disconnect() {
         webSocket?.close(1000, "User initiated disconnect")
         webSocket = null
+        hasJoinedRoom = false
     }
 
     companion object {

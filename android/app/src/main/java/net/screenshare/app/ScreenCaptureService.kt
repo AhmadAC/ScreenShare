@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
 class ScreenCaptureService : Service(), SignalingClient.Listener {
@@ -23,6 +24,7 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
     private var username: String = ""
     private var isHostServer: Boolean = false
     private var localIp: String = "127.0.0.1"
+    private val hasStartedShare = AtomicBoolean(false)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -41,6 +43,7 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
         username = intent.getStringExtra(EXTRA_USERNAME) ?: "Android Host"
         isHostServer = intent.getBooleanExtra(EXTRA_HOST_SERVER, false)
         localIp = intent.getStringExtra(EXTRA_LOCAL_IP) ?: "127.0.0.1"
+        hasStartedShare.set(false)
 
         val captureIntentData: Intent? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
@@ -134,7 +137,14 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
 
     override fun onRoomJoined() {
         broadcastState(STATE_BROADCASTING)
-        signalingClient?.sendStartShare()
+        if (hasStartedShare.compareAndSet(false, true)) {
+            Log.i(TAG, "First room join confirmed. Sending initial share request.")
+            signalingClient?.sendStartShare()
+        }
+    }
+
+    override fun onRoomUpdated() {
+        Log.d(TAG, "Room members / status updated.")
     }
 
     override fun onHostSessionReceived(session: HostSessionPayload) {
@@ -171,6 +181,7 @@ class ScreenCaptureService : Service(), SignalingClient.Listener {
     }
 
     private fun stopScreenSharing() {
+        hasStartedShare.set(false)
         signalingClient?.sendStopShare()
         signalingClient?.disconnect()
         signalingClient = null
