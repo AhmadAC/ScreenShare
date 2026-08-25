@@ -197,7 +197,6 @@ export const useRoom = (config: UIConfig): UseRoom => {
                             setRoomID(event.payload.id);
                         } else {
                             resolve();
-                            enqueueSnackbar('Unknown Event: ' + event.type, {variant: 'error'});
                             ws.close(1000, 'received unknown event');
                         }
                         return;

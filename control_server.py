@@ -216,12 +216,10 @@ def generate_qr_matrix(text: str):
             else:
                 final_result[r][c] = bool(matrix[r][c]) ^ (((r + c) % 2) == 0)
 
-    # Standard ISO/IEC 18004 Format Information for Error Correction Level L, Mask 0 (0x77c4)
     format_bits = 0x77C4
     def get_fbit(i):
         return ((format_bits >> i) & 1) == 1
 
-    # Copy 1 (Around top-left finder)
     for i in range(6):
         final_result[8][i] = get_fbit(i)
     final_result[8][7] = get_fbit(6)
@@ -230,12 +228,11 @@ def generate_qr_matrix(text: str):
     for i in range(9, 15):
         final_result[14 - i][8] = get_fbit(i)
 
-    # Copy 2 (Split across bottom-left and top-right finders)
     for i in range(8):
         final_result[size - 1 - i][8] = get_fbit(i)
     for i in range(8, 15):
         final_result[8][size - 15 + i] = get_fbit(i)
-    final_result[size - 8][8] = True  # Always dark module
+    final_result[size - 8][8] = True  
 
     return final_result
 
@@ -529,6 +526,31 @@ def run_http_server():
     server = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
     server.serve_forever()
 
+def needs_rebuild(src_dir, out_bin):
+    """Smart rebuild checker. Checks if ui/src or .go files are newer than the built binary."""
+    if not os.path.isfile(out_bin):
+        return True
+    
+    bin_mtime = os.path.getmtime(out_bin)
+    ui_src = os.path.join(src_dir, "ui", "src")
+    
+    # Check UI files
+    if os.path.isdir(ui_src):
+        for root, _, files in os.walk(ui_src):
+            for f in files:
+                if os.path.getmtime(os.path.join(root, f)) > bin_mtime:
+                    return True
+                    
+    # Check Go files
+    for root, dirs, files in os.walk(src_dir):
+        if "ui" in dirs: 
+            dirs.remove("ui") # Skip looking at the UI folder for go modifications
+        for f in files:
+            if f.endswith(".go") and os.path.getmtime(os.path.join(root, f)) > bin_mtime:
+                return True
+                
+    return False
+
 def find_or_build_binary():
     """Locates ScreenShare binary across search directories or auto-builds it."""
     search_dirs = [
@@ -542,6 +564,65 @@ def find_or_build_binary():
 
     target_names = ["ScreenShare", "screenshare"]
 
+    # Locate source directory
+    src_dir = None
+    for d in search_dirs:
+        if os.path.isfile(os.path.join(d, "main.go")):
+            src_dir = d
+            break
+
+    # If we have source code, detect if we need a rebuild
+    if src_dir:
+        out_bin = os.path.join(src_dir, "ScreenShare")
+        if needs_rebuild(src_dir, out_bin):
+            log("========================================")
+            log("Source files modified. Triggering React/Go re-compilation...")
+            log("========================================")
+            
+            # Rebuild Frontend
+            deno_bins = [
+                shutil.which("deno"),
+                os.path.expanduser("~/.deno/bin/deno"),
+                os.path.expanduser("~/.local/bin/deno")
+            ]
+            deno_cmd = next((d for d in deno_bins if d and os.path.isfile(d)), None)
+            ui_dir = os.path.join(src_dir, "ui")
+            
+            if deno_cmd and os.path.isdir(ui_dir):
+                log("Building React frontend with Deno...")
+                shutil.rmtree(os.path.join(ui_dir, "build"), ignore_errors=True)
+                subprocess.run([deno_cmd, "install"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run([deno_cmd, "task", "build"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+            # Rebuild Backend
+            go_bins = [
+                shutil.which("go"),
+                os.path.expanduser("~/.local/go/bin/go"),
+                os.path.expanduser("~/go/bin/go"),
+                "/usr/local/go/bin/go",
+                "/usr/bin/go"
+            ]
+            go_cmd = next((g for g in go_bins if g and os.path.isfile(go_cmd or "")), None)
+            
+            if go_cmd:
+                log("Compiling Go binary...")
+                if os.path.isfile(out_bin):
+                    os.remove(out_bin)
+                env = os.environ.copy()
+                env["CGO_ENABLED"] = "0"
+                build_res = subprocess.run(
+                    [go_cmd, "build", "-ldflags=-s -w -X main.mode=prod", "-o", out_bin, "."],
+                    cwd=src_dir,
+                    env=env
+                )
+                if build_res.returncode == 0 and os.path.isfile(out_bin):
+                    os.chmod(out_bin, 0o755)
+                    log("Build successful.")
+                    return out_bin
+                else:
+                    log(f"Go build failed: {build_res.stderr}")
+
+    # Fallback to prebuilt binary search
     for d in search_dirs:
         for name in target_names:
             bin_path = os.path.join(d, name)
@@ -557,53 +638,6 @@ def find_or_build_binary():
         in_path = shutil.which(name)
         if in_path:
             return in_path
-
-    go_bins = [
-        shutil.which("go"),
-        os.path.expanduser("~/.local/go/bin/go"),
-        os.path.expanduser("~/go/bin/go"),
-        "/usr/local/go/bin/go",
-        "/usr/bin/go"
-    ]
-    go_cmd = next((g for g in go_bins if g and os.path.isfile(go_cmd or "")), None)
-
-    if go_cmd:
-        src_dir = None
-        for d in search_dirs:
-            if os.path.isfile(os.path.join(d, "main.go")):
-                src_dir = d
-                break
-
-        if src_dir:
-            log("========================================")
-            log(f"Backend binary missing. Compiling in: {src_dir}")
-            log("========================================")
-            
-            ui_dist = os.path.join(src_dir, "ui", "build")
-            if not os.path.isdir(ui_dist):
-                deno_bins = [
-                    shutil.which("deno"),
-                    os.path.expanduser("~/.deno/bin/deno"),
-                    os.path.expanduser("~/.local/bin/deno")
-                ]
-                deno_cmd = next((d for d in deno_bins if d and os.path.isfile(d)), None)
-                ui_dir = os.path.join(src_dir, "ui")
-                if deno_cmd and os.path.isdir(ui_dir):
-                    log("Building React frontend with Deno...")
-                    subprocess.run([deno_cmd, "install"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    subprocess.run([deno_cmd, "task", "build"], cwd=ui_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-            out_bin = os.path.join(src_dir, "ScreenShare")
-            env = os.environ.copy()
-            env["CGO_ENABLED"] = "0"
-            build_res = subprocess.run(
-                [go_cmd, "build", "-ldflags=-s -w -X main.mode=prod", "-o", out_bin, "."],
-                cwd=src_dir,
-                env=env
-            )
-            if build_res.returncode == 0 and os.path.isfile(out_bin):
-                os.chmod(out_bin, 0o755)
-                return out_bin
 
     return None
 

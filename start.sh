@@ -42,9 +42,11 @@ for arg in "$@"; do
 done
 
 # Automatically rebuild if binary is missing or if sources are newer than build artifacts
-if [ ! -f "$SCRIPT_DIR/ScreenShare" ] || [ ! -d "$SCRIPT_DIR/ui/build" ]; then
+if [ ! -f "$SCRIPT_DIR/ScreenShare" ]; then
     BUILD_REQUESTED=true
-elif [ -d "$SCRIPT_DIR/ui/src" ] && [ "$SCRIPT_DIR/ui/src" -nt "$SCRIPT_DIR/ui/build" ]; then
+elif [ -d "$SCRIPT_DIR/ui/src" ] && [ -n "$(find "$SCRIPT_DIR/ui/src" -type f -newer "$SCRIPT_DIR/ScreenShare" -print -quit 2>/dev/null)" ]; then
+    BUILD_REQUESTED=true
+elif [ -n "$(find "$SCRIPT_DIR" -maxdepth 2 -name "*.go" -newer "$SCRIPT_DIR/ScreenShare" -print -quit 2>/dev/null)" ]; then
     BUILD_REQUESTED=true
 fi
 

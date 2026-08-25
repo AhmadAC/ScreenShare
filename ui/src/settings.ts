@@ -51,7 +51,8 @@ export enum VideoDisplayMode {
     OriginalSize = 'OriginalSize',
 }
 
-const SettingsKey = 'ScreenShareSettings';
+// Bumps the settings key so it purges the browser cache holding onto 30 FPS
+const SettingsKey = 'ScreenShareSettingsV2';
 
 export const loadSettings = (): Settings => {
     const settings: Partial<Settings> = JSON.parse(localStorage.getItem(SettingsKey) ?? '{}') ?? {};
