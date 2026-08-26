@@ -1,5 +1,3 @@
-control_server.py
-
 # Control_server.py
 import os
 import sys
@@ -184,7 +182,7 @@ def generate_qr_matrix(text: str):
     if spec["alignment"]:
         for ar in spec["alignment"]:
             for ac in spec["alignment"]:
-                if (ar <= 8 && ac <= 8) or (ar <= 8 && ac >= size - 8) or (ar >= size - 8 && ac <= 8):
+                if (ar <= 8 and ac <= 8) or (ar <= 8 and ac >= size - 8) or (ar >= size - 8 and ac <= 8):
                     continue
                 for r in range(-2, 3):
                     for c in range(-2, 3):
@@ -1332,4 +1330,3 @@ if __name__ == '__main__':
 
     app.aboutToQuit.connect(cleanup)
     sys.exit(app.exec())
-
