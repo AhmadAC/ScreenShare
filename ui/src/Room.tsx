@@ -7,6 +7,8 @@ import FullScreenIcon from '@mui/icons-material/Fullscreen';
 import PeopleIcon from '@mui/icons-material/People';
 import VolumeMuteIcon from '@mui/icons-material/VolumeOff';
 import VolumeIcon from '@mui/icons-material/VolumeUp';
+import MicIcon from '@mui/icons-material/Mic';
+import MicOffIcon from '@mui/icons-material/MicOff';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PausePresentationIcon from '@mui/icons-material/PausePresentation';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -65,6 +67,8 @@ export const Room = ({
     stopShare,
     setName,
     togglePause,
+    toggleMic,
+    toggleSystemAudio,
 }: {
     state: ConnectedRoom;
     config?: UseConfig;
@@ -72,6 +76,8 @@ export const Room = ({
     stopShare: () => void;
     setName: (name: string) => void;
     togglePause: () => void;
+    toggleMic: () => void;
+    toggleSystemAudio: () => void;
 }) => {
     const {classes} = useStyles();
     const [open, setOpen] = React.useState(false);
@@ -170,24 +176,9 @@ export const Room = ({
     const controlVisible = showControl || open || hoverControl;
 
     useHotkeys('s', () => (state.hostStream ? stopShare() : share()), [state.hostStream]);
-    useHotkeys(
-        'p',
-        () => {
-            if (state.hostStream) {
-                togglePause();
-            }
-        },
-        [state.hostStream]
-    );
-    useHotkeys(
-        'f',
-        () => {
-            if (selectedStream) {
-                handleFullscreen();
-            }
-        },
-        [handleFullscreen, selectedStream]
-    );
+    useHotkeys('p', () => { if (state.hostStream) togglePause(); }, [state.hostStream, togglePause]);
+    useHotkeys('m', () => { if (state.hostStream) toggleMic(); }, [state.hostStream, toggleMic]);
+    useHotkeys('f', () => { if (selectedStream) handleFullscreen(); }, [handleFullscreen, selectedStream]);
     useHotkeys('c', copyLink);
     useHotkeys(
         'h',
@@ -221,18 +212,6 @@ export const Room = ({
         },
         [state.clientStreams, selectedStream]
     );
-    useHotkeys(
-        'm',
-        () => {
-            if (videoElement) {
-                videoElement.muted = !videoElement.muted;
-                if (!videoElement.muted) {
-                    setAudioBlocked(false);
-                }
-            }
-        },
-        [videoElement]
-    );
 
     // Polling background loop for OS Global Hotkey and PySide6 GUI
     React.useEffect(() => {
@@ -246,13 +225,17 @@ export const Room = ({
                         if (!state.hostStream) share();
                     } else if (data.action === 'stop_share') {
                         if (state.hostStream) stopShare();
+                    } else if (data.action === 'toggle_mic') {
+                        toggleMic();
+                    } else if (data.action === 'toggle_sound') {
+                        toggleSystemAudio();
                     }
                 })
                 .catch(() => {});
         }, 300);
 
         return () => clearInterval(interval);
-    }, [state.hostStream, togglePause, share, stopShare]);
+    }, [state.hostStream, togglePause, share, stopShare, toggleMic, toggleSystemAudio]);
 
     // Post active streaming state back to PySide6 GUI for synchronization
     React.useEffect(() => {
@@ -261,10 +244,12 @@ export const Room = ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 sharing: !!state.hostStream,
-                paused: !!state.paused
+                paused: !!state.paused,
+                micMuted: !!state.micMuted,
+                soundMuted: !!state.soundMuted
             })
         }).catch(() => {});
-    }, [state.hostStream, state.paused]);
+    }, [state.hostStream, state.paused, state.micMuted, state.soundMuted]);
 
     const videoClasses = () => {
         switch (settings.displayMode) {
@@ -363,6 +348,27 @@ export const Room = ({
                                         )}
                                     </IconButton>
                                 </Tooltip>
+
+                                <Tooltip title={state.micMuted ? "Unmute Microphone" : "Mute Microphone"} arrow>
+                                    <IconButton onClick={toggleMic} size="large" color={state.micMuted ? "secondary" : "default"}>
+                                        {state.micMuted ? (
+                                            <MicOffIcon fontSize="large" />
+                                        ) : (
+                                            <MicIcon fontSize="large" />
+                                        )}
+                                    </IconButton>
+                                </Tooltip>
+
+                                <Tooltip title={state.soundMuted ? "Unmute Computer Sound" : "Mute Computer Sound"} arrow>
+                                    <IconButton onClick={toggleSystemAudio} size="large" color={state.soundMuted ? "secondary" : "default"}>
+                                        {state.soundMuted ? (
+                                            <VolumeMuteIcon fontSize="large" />
+                                        ) : (
+                                            <VolumeIcon fontSize="large" />
+                                        )}
+                                    </IconButton>
+                                </Tooltip>
+
                                 <Tooltip title="Cancel Presentation" arrow>
                                     <IconButton onClick={stopShare} size="large">
                                         <CancelPresentationIcon fontSize="large" />

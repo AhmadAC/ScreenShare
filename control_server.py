@@ -1,3 +1,5 @@
+control_server.py
+
 # Control_server.py
 import os
 import sys
@@ -38,6 +40,7 @@ BASE_DIR = get_base_dir()
 # AppImage sets $OWD to the directory where the user launched the application
 EXECUTION_DIR = os.environ.get("OWD", os.getcwd())
 LOG_FILE_PATH = os.path.join(EXECUTION_DIR, "ScreenShare-host.log")
+LINK_FILE_PATH = os.path.join(EXECUTION_DIR, "link.txt")
 
 def log(msg):
     """Outputs timestamped message to stdout and appends to ScreenShare-host.log in run directory."""
@@ -49,6 +52,15 @@ def log(msg):
             f.write(formatted + "\n")
     except Exception as e:
         print(f"Failed to write to log file {LOG_FILE_PATH}: {e}")
+
+def write_link_file(url):
+    """Writes the shareable viewer URL to link.txt in the execution directory."""
+    try:
+        with open(LINK_FILE_PATH, "w", encoding="utf-8") as f:
+            f.write(url.strip() + "\n")
+        log(f"Viewer link written to: {LINK_FILE_PATH}")
+    except Exception as e:
+        log(f"Failed to write link.txt: {e}")
 
 # =====================================================================
 # PURE-PYTHON QR CODE GENERATOR (COMPLIANT WITH ISO/IEC 18004)
@@ -172,7 +184,7 @@ def generate_qr_matrix(text: str):
     if spec["alignment"]:
         for ar in spec["alignment"]:
             for ac in spec["alignment"]:
-                if (ar <= 8 and ac <= 8) or (ar <= 8 and ac >= size - 8) or (ar >= size - 8 and ac <= 8):
+                if (ar <= 8 && ac <= 8) or (ar <= 8 && ac >= size - 8) or (ar >= size - 8 && ac <= 8):
                     continue
                 for r in range(-2, 3):
                     for c in range(-2, 3):
@@ -405,7 +417,7 @@ remap_module_id = None
 active_audio_source_name = None
 
 def setup_pipewire_audio():
-    """Sets up virtual audio sink / mic monitoring for screen sharing on Linux."""
+    """Sets up virtual audio source (Computer Sound) monitoring on Linux."""
     if not sys.platform.startswith("linux"):
         return
     global original_default_source, remap_module_id, active_audio_source_name
@@ -423,18 +435,18 @@ def setup_pipewire_audio():
 
         load_res = subprocess.run([
             "pactl", "load-module", "module-remap-source",
-            "source_name=VirtualMic",
+            "source_name=ComputerSound",
             f"master={monitor_source}",
-            "source_properties=device.description=VirtualMic"
+            "source_properties=device.description=\"Computer Sound\""
         ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
 
         if load_res.returncode == 0 and load_res.stdout.strip().isdigit():
             remap_module_id = load_res.stdout.strip()
-            active_audio_source_name = "VirtualMic"
-            run_audio_cmd(["pactl", "set-default-source", "VirtualMic"])
-            run_audio_cmd(["pactl", "set-source-mute", "VirtualMic", "0"])
-            run_audio_cmd(["pactl", "set-source-volume", "VirtualMic", "100%"])
-            log("Audio setup: Loaded module-remap-source (VirtualMic)")
+            active_audio_source_name = "ComputerSound"
+            run_audio_cmd(["pactl", "set-default-source", "ComputerSound"])
+            run_audio_cmd(["pactl", "set-source-mute", "ComputerSound", "0"])
+            run_audio_cmd(["pactl", "set-source-volume", "ComputerSound", "100%"])
+            log("Audio setup: Loaded module-remap-source ('Computer Sound')")
         else:
             active_audio_source_name = monitor_source
             run_audio_cmd(["pactl", "set-default-source", monitor_source])
@@ -457,7 +469,7 @@ def cleanup_audio():
         run_audio_cmd(["pactl", "set-default-source", original_default_source])
 
 def sync_audio_volume():
-    """Continuously syncs the default sink volume to the VirtualMic on Linux."""
+    """Continuously syncs the default sink volume to Computer Sound on Linux."""
     if not sys.platform.startswith("linux"):
         return
     clean_env = get_clean_host_env()
@@ -467,7 +479,7 @@ def sync_audio_volume():
             parts = res.stdout.split('/')
             if len(parts) > 1:
                 vol_str = parts[1].strip()
-                source = active_audio_source_name or "VirtualMic"
+                source = active_audio_source_name or "ComputerSound"
                 subprocess.run(["pactl", "set-source-volume", source, vol_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
 
         proc = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, text=True, env=clean_env)
@@ -478,7 +490,7 @@ def sync_audio_volume():
                     parts = res.stdout.split('/')
                     if len(parts) > 1:
                         vol_str = parts[1].strip()
-                        source = active_audio_source_name or "VirtualMic"
+                        source = active_audio_source_name or "ComputerSound"
                         subprocess.run(["pactl", "set-source-volume", source, vol_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
     except Exception:
         pass
@@ -487,7 +499,12 @@ class CommSignals(QObject):
     state_updated = Signal(dict)
 
 comm = CommSignals()
-app_state = {"sharing": False, "paused": False}
+app_state = {
+    "sharing": False,
+    "paused": False,
+    "micMuted": False,
+    "soundMuted": False
+}
 pending_action = None
 
 class Handler(BaseHTTPRequestHandler):
@@ -523,8 +540,8 @@ class Handler(BaseHTTPRequestHandler):
                 post_data = self.rfile.read(content_length)
                 try:
                     data = json.loads(post_data.decode('utf-8'))
-                    app_state = data
-                    comm.state_updated.emit(data)
+                    app_state.update(data)
+                    comm.state_updated.emit(app_state)
                 except Exception:
                     pass
             self.send_response(200)
@@ -1034,7 +1051,6 @@ class OverlayToolbar(QWidget):
         super().__init__()
         self.lan_ip = lan_ip
         self.viewer_url = f"http://{self.lan_ip}:5050/?room={ROOM_NAME}&create=true"
-        self.audio_muted = False
         self.is_collapsed = False
         self._drag_pos = QPoint()
         self.qr_dialog = QROverlayDialog(self.viewer_url)
@@ -1121,9 +1137,13 @@ class OverlayToolbar(QWidget):
         self.btn_pause.setEnabled(False)
         container_layout.addWidget(self.btn_pause)
 
-        self.btn_mute = QPushButton("Mute", self.container)
-        self.btn_mute.clicked.connect(self.toggle_mute)
-        container_layout.addWidget(self.btn_mute)
+        self.btn_sound = QPushButton("Computer Sound", self.container)
+        self.btn_sound.clicked.connect(self.toggle_sound)
+        container_layout.addWidget(self.btn_sound)
+
+        self.btn_mic = QPushButton("Mic: On", self.container)
+        self.btn_mic.clicked.connect(self.toggle_mic)
+        container_layout.addWidget(self.btn_mic)
 
         self.btn_qr = QPushButton("QR", self.container)
         self.btn_qr.setObjectName("QRBtn")
@@ -1133,7 +1153,7 @@ class OverlayToolbar(QWidget):
 
         self.indicator = InteractiveIndicator("●", self.container)
         self.indicator.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.indicator.setToolTip(f"ScreenShare running on {self.viewer_url}\nClick to collapse/expand\nLog: {LOG_FILE_PATH}")
+        self.indicator.setToolTip(f"ScreenShare running on {self.viewer_url}\nLink written to link.txt\nClick to collapse/expand")
         self.set_indicator_color("#b8bb26")
         self.indicator.clicked.connect(self.toggle_collapse)
         container_layout.addWidget(self.indicator)
@@ -1171,7 +1191,8 @@ class OverlayToolbar(QWidget):
         self.grip.setVisible(not self.is_collapsed)
         self.btn_share.setVisible(not self.is_collapsed)
         self.btn_pause.setVisible(not self.is_collapsed)
-        self.btn_mute.setVisible(not self.is_collapsed)
+        self.btn_sound.setVisible(not self.is_collapsed)
+        self.btn_mic.setVisible(not self.is_collapsed)
         self.btn_qr.setVisible(not self.is_collapsed)
         self.btn_exit.setVisible(not self.is_collapsed)
         if self.is_collapsed and self.qr_dialog.isVisible():
@@ -1181,7 +1202,7 @@ class OverlayToolbar(QWidget):
 
     def toggle_share(self):
         global pending_action
-        if app_state["sharing"]:
+        if app_state.get("sharing", False):
             pending_action = "stop_share"
         else:
             pending_action = "start_share"
@@ -1190,39 +1211,31 @@ class OverlayToolbar(QWidget):
         global pending_action
         pending_action = "toggle_pause"
 
-    def toggle_mute(self):
-        global active_audio_source_name
-        self.audio_muted = not self.audio_muted
-        source_to_mute = active_audio_source_name or "VirtualMic"
-        if self.audio_muted:
-            self.btn_mute.setText("Unmute")
-            self.btn_mute.setStyleSheet("background-color: #cc241d; color: white;")
-            run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "1"])
-        else:
-            self.btn_mute.setText("Mute")
-            self.btn_mute.setStyleSheet("")
-            run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "0"])
+    def toggle_sound(self):
+        global pending_action, active_audio_source_name
+        pending_action = "toggle_sound"
+        if sys.platform.startswith("linux"):
+            source = active_audio_source_name or "ComputerSound"
+            current_muted = app_state.get("soundMuted", False)
+            run_audio_cmd(["pactl", "set-source-mute", source, "0" if current_muted else "1"])
+
+    def toggle_mic(self):
+        global pending_action
+        pending_action = "toggle_mic"
 
     def update_gui_state(self, state):
-        if state["sharing"]:
+        if state.get("sharing", False):
             self.btn_share.setText("Stop")
             self.btn_share.setStyleSheet("background-color: #cc241d; color: white;")
             self.btn_pause.setEnabled(True)
-            if state["paused"]:
+            if state.get("paused", False):
                 self.btn_pause.setText("Resume")
                 self.btn_pause.setStyleSheet("background-color: #fabd2f; color: black;")
                 self.set_indicator_color("#fabd2f")
-                
-                source_to_mute = active_audio_source_name or "VirtualMic"
-                run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "1"])
             else:
                 self.btn_pause.setText("Pause")
                 self.btn_pause.setStyleSheet("")
                 self.set_indicator_color("#fe8019")
-                
-                if not self.audio_muted:
-                    source_to_mute = active_audio_source_name or "VirtualMic"
-                    run_audio_cmd(["pactl", "set-source-mute", source_to_mute, "0"])
         else:
             self.btn_share.setText("Share")
             self.btn_share.setStyleSheet("")
@@ -1230,6 +1243,20 @@ class OverlayToolbar(QWidget):
             self.btn_pause.setStyleSheet("")
             self.btn_pause.setEnabled(False)
             self.set_indicator_color("#b8bb26")
+
+        if state.get("soundMuted", False):
+            self.btn_sound.setText("Sound Muted")
+            self.btn_sound.setStyleSheet("background-color: #cc241d; color: white;")
+        else:
+            self.btn_sound.setText("Computer Sound")
+            self.btn_sound.setStyleSheet("")
+
+        if state.get("micMuted", False):
+            self.btn_mic.setText("Mic: Off")
+            self.btn_mic.setStyleSheet("background-color: #cc241d; color: white;")
+        else:
+            self.btn_mic.setText("Mic: On")
+            self.btn_mic.setStyleSheet("")
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -1254,8 +1281,11 @@ if __name__ == '__main__':
     time.sleep(0.5)
 
     lan_ip = detect_lan_ip()
+    viewer_url = f"http://{lan_ip}:5050/?room={ROOM_NAME}&create=true"
     log(f" Detected Local IP     : {lan_ip}")
     log(f" Viewers URL           : http://{lan_ip}:5050")
+
+    write_link_file(f"http://{lan_ip}:5050/?room={ROOM_NAME}")
 
     setup_pipewire_audio()
 
@@ -1269,7 +1299,7 @@ if __name__ == '__main__':
 
     sync_thread = threading.Thread(target=sync_audio_volume, daemon=True)
     sync_thread.start()
-    log("Audio sync thread started (mirroring sink volume to VirtualMic)")
+    log("Audio sync thread started (mirroring sink volume to Computer Sound)")
 
     room_url = f"http://127.0.0.1:5050/?room={ROOM_NAME}&create=true"
     browser_proc = launch_hidden_browser(room_url)
@@ -1302,3 +1332,4 @@ if __name__ == '__main__':
 
     app.aboutToQuit.connect(cleanup)
     sys.exit(app.exec())
+
