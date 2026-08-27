@@ -453,13 +453,11 @@ export const useRoom = (config: UIConfig): UseRoom => {
 
             // Connect system audio ONLY to the system audio gain bus
             const displayAudioTracks = screenStream.getAudioTracks();
-            let systemAudioConnected = false;
 
             if (displayAudioTracks.length > 0) {
                 sysStreamRef.current = new MediaStream(displayAudioTracks);
                 const sysSource = audioCtx.createMediaStreamSource(sysStreamRef.current);
                 sysSource.connect(sysGain);
-                systemAudioConnected = true;
             } else {
                 // If getDisplayMedia provided no audio tracks, look specifically for a virtual/monitor device
                 const monitorDevice = audioInputs.find((d) => isMonitorLabel(d.label));
@@ -476,7 +474,6 @@ export const useRoom = (config: UIConfig): UseRoom => {
                         sysStreamRef.current = fallbackAudio;
                         const sysSource = audioCtx.createMediaStreamSource(fallbackAudio);
                         sysSource.connect(sysGain);
-                        systemAudioConnected = true;
                     } catch (e) {
                         console.log('Could not open monitor audio device:', e);
                     }
