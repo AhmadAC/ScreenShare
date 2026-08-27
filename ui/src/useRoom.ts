@@ -417,10 +417,20 @@ export const useRoom = (config: UIConfig): UseRoom => {
             micGain.connect(audioDest);
             micGainRef.current = micGain;
 
-            // Enumerate audio input devices to distinguish system monitor/loopback devices from real microphones
+            // Enumerate audio input devices to distinguish system monitor/loopback devices from real physical microphones
             let audioDevices: MediaDeviceInfo[] = [];
             try {
                 audioDevices = await navigator.mediaDevices.enumerateDevices();
+                if (audioDevices.some((d) => d.kind === 'audioinput' && !d.label)) {
+                    // Trigger permission probe so device labels become visible and inspectable
+                    try {
+                        const tempStream = await navigator.mediaDevices.getUserMedia({audio: true});
+                        tempStream.getTracks().forEach((t) => t.stop());
+                        audioDevices = await navigator.mediaDevices.enumerateDevices();
+                    } catch (permErr) {
+                        console.log('Permission probe skipped:', permErr);
+                    }
+                }
             } catch (enumErr) {
                 console.log('Device enumeration failed:', enumErr);
             }
@@ -436,11 +446,12 @@ export const useRoom = (config: UIConfig): UseRoom => {
                     l.includes('.monitor') ||
                     l.includes('stereo mix') ||
                     l.includes('what u hear') ||
-                    l.includes('wave out mix')
+                    l.includes('wave out mix') ||
+                    l.includes('loopback')
                 );
             };
 
-            // Connect system audio
+            // Connect system audio ONLY to the system audio gain bus
             const displayAudioTracks = screenStream.getAudioTracks();
             let systemAudioConnected = false;
 
@@ -472,29 +483,18 @@ export const useRoom = (config: UIConfig): UseRoom => {
                 }
             }
 
-            // Capture Real Physical Microphone (strictly avoiding monitor devices to prevent bleed into system channel)
+            // Capture Real Physical Microphone (strictly avoiding monitor devices to prevent bleed into mic channel)
             const physicalMicDevice = audioInputs.find((d) => !isMonitorLabel(d.label) && d.deviceId);
-            const micConstraints: MediaStreamConstraints = physicalMicDevice
-                ? {
-                      audio: {
-                          deviceId: { exact: physicalMicDevice.deviceId },
-                          echoCancellation: true,
-                          noiseSuppression: true,
-                          autoGainControl: true,
-                      },
-                  }
-                : {
-                      audio: {
-                          echoCancellation: true,
-                          noiseSuppression: true,
-                          autoGainControl: true,
-                      },
-                  };
-
-            // Only request microphone if it will not collide with the system audio stream
-            if (!systemAudioConnected || audioInputs.length > 1 || !isMonitorLabel(audioInputs[0]?.label || '')) {
+            if (physicalMicDevice) {
                 try {
-                    const micStream = await navigator.mediaDevices.getUserMedia(micConstraints);
+                    const micStream = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            deviceId: { exact: physicalMicDevice.deviceId },
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                        },
+                    });
                     const micTracks = micStream.getAudioTracks();
                     if (micTracks.length > 0) {
                         if (isMicMutedRef.current) {
@@ -505,11 +505,19 @@ export const useRoom = (config: UIConfig): UseRoom => {
                         micSource.connect(micGain);
                     }
                 } catch (micErr) {
-                    console.log('Real microphone capture not available:', micErr);
+                    console.log('Real physical microphone capture not available:', micErr);
                 }
             }
 
-            // Attach the final mixed audio track to the outgoing stream
+            // Ensure initial track mute states match refs exactly
+            if (sysStreamRef.current && isSoundMutedRef.current) {
+                sysStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = false));
+            }
+            if (micStreamRef.current && isMicMutedRef.current) {
+                micStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = false));
+            }
+
+            // Attach the mixed audio track to the outgoing stream
             const mixedAudioTracks = audioDest.stream.getAudioTracks();
             if (mixedAudioTracks.length > 0) {
                 combinedStream.addTrack(mixedAudioTracks[0]);

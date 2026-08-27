@@ -414,6 +414,36 @@ original_default_source = None
 remap_module_id = None
 active_audio_source_name = None
 
+def get_physical_mic_sources():
+    """Returns a list of all physical microphone source names on Linux."""
+    if not sys.platform.startswith("linux"):
+        return []
+    clean_env = get_clean_host_env()
+    try:
+        res = subprocess.run(["pactl", "list", "short", "sources"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
+        sources = []
+        for line in res.stdout.strip().split("\n"):
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) >= 2:
+                sname = parts[1]
+                if not sname.endswith(".monitor") and sname != "ComputerSound":
+                    sources.append(sname)
+        return sources
+    except Exception:
+        return []
+
+def set_physical_mics_muted(muted: bool):
+    """Mutes or unmutes all physical microphones at the OS PulseAudio/PipeWire level."""
+    if not sys.platform.startswith("linux"):
+        return
+    mute_val = "1" if muted else "0"
+    for s in get_physical_mic_sources():
+        run_audio_cmd(["pactl", "set-source-mute", s, mute_val])
+    if original_default_source and not original_default_source.endswith(".monitor") and original_default_source != "ComputerSound":
+        run_audio_cmd(["pactl", "set-source-mute", original_default_source, mute_val])
+
 def setup_pipewire_audio():
     """Sets up virtual audio source (Computer Sound) monitoring on Linux."""
     if not sys.platform.startswith("linux"):
@@ -454,10 +484,12 @@ def setup_pipewire_audio():
         log(f"Warning: Audio setup encountered: {e}")
 
 def cleanup_audio():
-    """Restores the original audio default source on Linux."""
+    """Restores the original audio default source and unmutes physical microphones on Linux."""
     if not sys.platform.startswith("linux"):
         return
     global original_default_source, remap_module_id
+    set_physical_mics_muted(False)
+
     if remap_module_id:
         run_audio_cmd(["pactl", "unload-module", remap_module_id])
     else:
@@ -540,6 +572,8 @@ class Handler(BaseHTTPRequestHandler):
                     data = json.loads(post_data.decode('utf-8'))
                     app_state.update(data)
                     comm.state_updated.emit(app_state)
+                    if "micMuted" in data:
+                        set_physical_mics_muted(data["micMuted"])
                 except Exception:
                     pass
             self.send_response(200)
@@ -1220,6 +1254,8 @@ class OverlayToolbar(QWidget):
     def toggle_mic(self):
         global pending_action
         pending_action = "toggle_mic"
+        current_mic_muted = app_state.get("micMuted", False)
+        set_physical_mics_muted(not current_mic_muted)
 
     def update_gui_state(self, state):
         if state.get("sharing", False):
@@ -1249,12 +1285,15 @@ class OverlayToolbar(QWidget):
             self.btn_sound.setText("Computer Sound")
             self.btn_sound.setStyleSheet("")
 
-        if state.get("micMuted", False):
+        mic_is_muted = state.get("micMuted", False)
+        if mic_is_muted:
             self.btn_mic.setText("Mic: Off")
             self.btn_mic.setStyleSheet("background-color: #cc241d; color: white;")
         else:
             self.btn_mic.setText("Mic: On")
             self.btn_mic.setStyleSheet("")
+
+        set_physical_mics_muted(mic_is_muted)
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.MouseButton.LeftButton:
