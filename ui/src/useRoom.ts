@@ -371,6 +371,11 @@ export const useRoom = (config: UIConfig): UseRoom => {
         if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
             enqueueSnackbar('Screensharing not supported in this browser.', {variant: 'error', persist: true});
             isStartingShare.current = false;
+            fetch('http://127.0.0.1:5055/state', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({sharing: false}),
+            }).catch(() => {});
             return;
         }
 
@@ -401,6 +406,11 @@ export const useRoom = (config: UIConfig): UseRoom => {
 
             if (!screenStream) {
                 isStartingShare.current = false;
+                fetch('http://127.0.0.1:5055/state', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({sharing: false}),
+                }).catch(() => {});
                 return;
             }
 
@@ -511,6 +521,11 @@ export const useRoom = (config: UIConfig): UseRoom => {
                 persist: true,
             });
             isStartingShare.current = false;
+            fetch('http://127.0.0.1:5055/state', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({sharing: false}),
+            }).catch(() => {});
             return;
         } finally {
             isStartingShare.current = false;

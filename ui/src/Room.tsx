@@ -1,4 +1,3 @@
-// server/ui/src/Room.tsx
 import React, {useCallback} from 'react';
 import {Badge, Box, IconButton, Paper, Tooltip, Typography, Slider, Stack} from '@mui/material';
 import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
@@ -229,7 +228,6 @@ export const Room = ({
         [state.clientStreams, selectedStream]
     );
 
-    // Polling background loop for OS Global Hotkey and PySide6 GUI
     React.useEffect(() => {
         const interval = setInterval(() => {
             fetch('http://127.0.0.1:5055/poll?t=' + Date.now())
@@ -254,7 +252,6 @@ export const Room = ({
         return () => clearInterval(interval);
     }, []);
 
-    // Post active streaming state back to PySide6 GUI for synchronization
     React.useEffect(() => {
         fetch('http://127.0.0.1:5055/state', {
             method: 'POST',
@@ -543,7 +540,6 @@ const useShowOnMouseMovement = (doShow: (s: boolean) => void) => {
                 timeoutHandle.current = 0;
                 doShow(false);
             }, 1000)),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         []
     );
 };

@@ -45,7 +45,7 @@
     "npm:@emotion/serialize@*": "1.3.3",
     "npm:@emotion/serialize@^1.3.3": "1.3.3",
     "npm:@emotion/sheet@^1.4.0": "1.4.0",
-    "npm:@emotion/styled@11.14.1": "11.14.1_@emotion+react@11.14.0__react@19.2.5_react@19.2.5",
+    "npm:@emotion/styled@11.14.1": "11.14.1_@emotion+react@11.14.0_react@19.2.5",
     "npm:@emotion/unitless@0.10": "0.10.0",
     "npm:@emotion/use-insertion-effect-with-fallbacks@^1.2.0": "1.2.0_react@19.2.5",
     "npm:@emotion/utils@*": "1.4.2",
@@ -60,13 +60,13 @@
     "npm:@jridgewell/trace-mapping@~0.3.24": "0.3.31",
     "npm:@jridgewell/trace-mapping@~0.3.28": "0.3.31",
     "npm:@mui/core-downloads-tracker@9": "9.0.0",
-    "npm:@mui/icons-material@9.0.0": "9.0.0_@mui+material@9.0.0__@emotion+react@11.14.0___react@19.2.5__@emotion+styled@11.14.1___@emotion+react@11.14.0____react@19.2.5___react@19.2.5__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_@emotion+react@11.14.0__react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_react-dom@19.2.5__react@19.2.5",
-    "npm:@mui/material@9.0.0": "9.0.0_@emotion+react@11.14.0__react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
+    "npm:@mui/icons-material@9.0.0": "9.0.0_@mui+material@9.0.0_@types+react@19.2.14_react@19.2.5_@emotion+react@11.14.0_@emotion+styled@11.14.1_react-dom@19.2.5",
+    "npm:@mui/material@9.0.0": "9.0.0_@emotion+react@11.14.0_@emotion+styled@11.14.1_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5",
     "npm:@mui/private-theming@9": "9.0.0_@types+react@19.2.14_react@19.2.5",
     "npm:@mui/private-theming@^6.4.8": "6.4.9_@types+react@19.2.14_react@19.2.5",
-    "npm:@mui/styled-engine@9": "9.0.0_@emotion+react@11.14.0__react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_react@19.2.5",
+    "npm:@mui/styled-engine@9": "9.0.0_@emotion+react@11.14.0_@emotion+styled@11.14.1_react@19.2.5",
     "npm:@mui/styles@^6.1.1": "6.4.8_@types+react@19.2.14_react@19.2.5",
-    "npm:@mui/system@9": "9.0.0_@emotion+react@11.14.0__react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_@types+react@19.2.14_react@19.2.5",
+    "npm:@mui/system@9": "9.0.0_@emotion+react@11.14.0_@emotion+styled@11.14.1_@types+react@19.2.14_react@19.2.5",
     "npm:@mui/types@9": "9.0.0_@types+react@19.2.14",
     "npm:@mui/types@~7.2.24": "7.2.24_@types+react@19.2.14",
     "npm:@mui/utils@9": "9.0.0_@types+react@19.2.14_react@19.2.5",
@@ -104,7 +104,7 @@
     "npm:@svgr/babel-preset@8.1.0": "8.1.0_@babel+core@7.29.0",
     "npm:@svgr/core@^8.1.0": "8.1.0_typescript@6.0.3",
     "npm:@svgr/hast-util-to-babel-ast@8.0.0": "8.0.0",
-    "npm:@svgr/plugin-jsx@^8.1.0": "8.1.0_@svgr+core@8.1.0__typescript@6.0.3_typescript@6.0.3",
+    "npm:@svgr/plugin-jsx@^8.1.0": "8.1.0_@svgr+core@8.1.0_typescript@6.0.3",
     "npm:@tybys/wasm-util@~0.10.1": "0.10.1",
     "npm:@types/estree@1": "1.0.8",
     "npm:@types/parse-json@4": "4.0.2",
@@ -113,7 +113,7 @@
     "npm:@types/react-dom@19.2.3": "19.2.3_@types+react@19.2.14",
     "npm:@types/react-transition-group@^4.4.12": "4.4.12_@types+react@19.2.14",
     "npm:@types/react@19.2.14": "19.2.14",
-    "npm:@vitejs/plugin-react@6.0.1": "6.0.1_vite@8.0.10__yaml@1.10.3_yaml@1.10.3",
+    "npm:@vitejs/plugin-react@6.0.1": "6.0.1_vite@8.0.10_yaml@1.10.3",
     "npm:argparse@^2.0.1": "2.0.1",
     "npm:babel-plugin-macros@^3.1.0": "3.1.0",
     "npm:baseline-browser-mapping@^2.10.12": "2.10.21",
@@ -197,7 +197,7 @@
     "npm:nanoid@^3.3.11": "3.3.11",
     "npm:no-case@^3.0.4": "3.0.4",
     "npm:node-releases@^2.0.36": "2.0.38",
-    "npm:notistack@^3.0.1": "3.0.2_react@19.2.5_react-dom@19.2.5__react@19.2.5_csstype@3.2.3",
+    "npm:notistack@^3.0.1": "3.0.2_react@19.2.5_react-dom@19.2.5_csstype@3.2.3",
     "npm:object-assign@^4.1.1": "4.1.1",
     "npm:parent-module@1": "1.0.1",
     "npm:parse-json@5": "5.2.0",
@@ -212,12 +212,12 @@
     "npm:prop-types@^15.6.2": "15.8.1",
     "npm:prop-types@^15.8.1": "15.8.1",
     "npm:react-dom@19.2.5": "19.2.5_react@19.2.5",
-    "npm:react-hotkeys-hook@5.2.4": "5.2.4_react@19.2.5_react-dom@19.2.5__react@19.2.5",
+    "npm:react-hotkeys-hook@5.2.4": "5.2.4_react@19.2.5_react-dom@19.2.5",
     "npm:react-is@19": "19.2.5",
     "npm:react-is@^16.13.1": "16.13.1",
     "npm:react-is@^16.7.0": "16.13.1",
     "npm:react-is@^19.2.4": "19.2.5",
-    "npm:react-transition-group@^4.4.5": "4.4.5_react@19.2.5_react-dom@19.2.5__react@19.2.5",
+    "npm:react-transition-group@^4.4.5": "4.4.5_react@19.2.5_react-dom@19.2.5",
     "npm:react@19.2.5": "19.2.5",
     "npm:resolve-from@4": "4.0.0",
     "npm:resolve@^1.19.0": "1.22.12",
@@ -235,15 +235,15 @@
     "npm:tsconfck@^3.0.3": "3.1.6_typescript@6.0.3",
     "npm:tslib@^2.0.3": "2.8.1",
     "npm:tslib@^2.4.0": "2.8.1",
-    "npm:tss-react@^4.9.20": "4.9.20_@emotion+react@11.14.0__react@19.2.5_@mui+material@9.0.0__@emotion+react@11.14.0___react@19.2.5__@emotion+styled@11.14.1___@emotion+react@11.14.0____react@19.2.5___react@19.2.5__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_react-dom@19.2.5__react@19.2.5",
+    "npm:tss-react@^4.9.20": "4.9.20_@emotion+react@11.14.0_@mui+material@9.0.0_@types+react@19.2.14_react@19.2.5_@emotion+styled@11.14.1_react-dom@19.2.5",
     "npm:typescript@6.0.3": "6.0.3",
     "npm:update-browserslist-db@^1.2.3": "1.2.3_browserslist@4.28.2",
-    "npm:urs@^0.0.8": "0.0.8_react@19.2.5_react-dom@19.2.5__react@19.2.5",
-    "npm:use-http@^1.0.28": "1.0.28_react@19.2.5_react-dom@19.2.5__react@19.2.5",
-    "npm:use-ssr@^1.0.24": "1.0.25_react@19.2.5_react-dom@19.2.5__react@19.2.5",
+    "npm:urs@^0.0.8": "0.0.8_react@19.2.5_react-dom@19.2.5",
+    "npm:use-http@^1.0.28": "1.0.28_react@19.2.5_react-dom@19.2.5",
+    "npm:use-ssr@^1.0.24": "1.0.25_react@19.2.5_react-dom@19.2.5",
     "npm:utility-types@^3.10.0": "3.11.0",
-    "npm:vite-plugin-svgr@5.2.0": "5.2.0_vite@8.0.10__yaml@1.10.3_typescript@6.0.3_yaml@1.10.3",
-    "npm:vite-tsconfig-paths@6.1.1": "6.1.1_vite@8.0.10__yaml@1.10.3_typescript@6.0.3_yaml@1.10.3",
+    "npm:vite-plugin-svgr@5.2.0": "5.2.0_vite@8.0.10_typescript@6.0.3_yaml@1.10.3",
+    "npm:vite-tsconfig-paths@6.1.1": "6.1.1_vite@8.0.10_typescript@6.0.3_yaml@1.10.3",
     "npm:vite@8.0.10": "8.0.10_yaml@1.10.3",
     "npm:yallist@^3.0.2": "3.1.1",
     "npm:yaml@^1.10.0": "1.10.3"
@@ -456,7 +456,7 @@
     "@emotion/sheet@1.4.0": {
       "integrity": "sha512-fTBW9/8r2w3dXWYM4HCB1Rdp8NLibOw2+XELH5m5+AkWiL/KqYX6dc0kKYlaYyKjrQ6ds33MCdMPEwgs2z1rqg=="
     },
-    "@emotion/styled@11.14.1_@emotion+react@11.14.0__react@19.2.5_react@19.2.5": {
+    "@emotion/styled@11.14.1_@emotion+react@11.14.0_react@19.2.5": {
       "integrity": "sha512-qEEJt42DuToa3gurlH4Qqc1kVpNq8wO8cJtDzU46TjlzWjDlsVyevtYCRijVq3SrHsROS+gVQ8Fnea108GnKzw==",
       "dependencies": [
         "@babel/runtime",
@@ -514,7 +514,7 @@
     "@mui/core-downloads-tracker@9.0.0": {
       "integrity": "sha512-uwQNGkhv0lf7ufxw6QXev77BW6pWbW+7uxYjU5+rfp4lBkFtMEgJCsarTM3Tn+i0lGx6+Ol2u88JdGXr0GDskA=="
     },
-    "@mui/icons-material@9.0.0_@mui+material@9.0.0__@emotion+react@11.14.0___react@19.2.5__@emotion+styled@11.14.1___@emotion+react@11.14.0____react@19.2.5___react@19.2.5__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_@emotion+react@11.14.0__react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+    "@mui/icons-material@9.0.0_@mui+material@9.0.0_@types+react@19.2.14_react@19.2.5_@emotion+react@11.14.0_@emotion+styled@11.14.1_react-dom@19.2.5": {
       "integrity": "sha512-oDwyvI6LgjWRC9MBcSGvLkPud9S9ELgSBQFYxa1rYcZn6Br55dn22SyvsPDMsn0G8OndFk53iMT45W5mNqrogw==",
       "dependencies": [
         "@babel/runtime",
@@ -526,7 +526,7 @@
         "@types/react"
       ]
     },
-    "@mui/material@9.0.0_@emotion+react@11.14.0__react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+    "@mui/material@9.0.0_@emotion+react@11.14.0_@emotion+styled@11.14.1_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5": {
       "integrity": "sha512-+VP/oQCDhDR87NQQgXnNBG8dwy6GNuQLnenS1pZvkbn2dKFSxRSRMybTpH9xUxXP+316mlYDy5CSbYtusnCWtw==",
       "dependencies": [
         "@babel/runtime",
@@ -579,7 +579,7 @@
         "@types/react"
       ]
     },
-    "@mui/styled-engine@9.0.0_@emotion+react@11.14.0__react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_react@19.2.5": {
+    "@mui/styled-engine@9.0.0_@emotion+react@11.14.0_@emotion+styled@11.14.1_react@19.2.5": {
       "integrity": "sha512-9RLGdX4Jg0aQPRuvqh/OLzYSPlgd5zyEw5/1HIRfdavSiOd03WtUaGZH9/w1RoTYuRKwpgy0hpIFaMHIqPVIWg==",
       "dependencies": [
         "@babel/runtime",
@@ -625,7 +625,7 @@
       ],
       "deprecated": true
     },
-    "@mui/system@9.0.0_@emotion+react@11.14.0__react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_@types+react@19.2.14_react@19.2.5": {
+    "@mui/system@9.0.0_@emotion+react@11.14.0_@emotion+styled@11.14.1_@types+react@19.2.14_react@19.2.5": {
       "integrity": "sha512-YnC5Zg6j04IxiLc/boAKs0464jfZlLFVa7mf5E8lF0XOtZVUvG6R6gJK50lgUYdaaLdyLfxF6xR7LaPuEpeT/g==",
       "dependencies": [
         "@babel/runtime",
@@ -884,7 +884,7 @@
         "entities"
       ]
     },
-    "@svgr/plugin-jsx@8.1.0_@svgr+core@8.1.0__typescript@6.0.3_typescript@6.0.3": {
+    "@svgr/plugin-jsx@8.1.0_@svgr+core@8.1.0_typescript@6.0.3": {
       "integrity": "sha512-0xiIyBsLlr8quN+WyuxooNW9RJ0Dpr8uOnH/xrCVO8GLUcwHISwj1AG0k+LFzteTkAA0GbX0kj9q6Dk70PTiPA==",
       "dependencies": [
         "@babel/core",
@@ -927,7 +927,7 @@
         "csstype"
       ]
     },
-    "@vitejs/plugin-react@6.0.1_vite@8.0.10__yaml@1.10.3_yaml@1.10.3": {
+    "@vitejs/plugin-react@6.0.1_vite@8.0.10_yaml@1.10.3": {
       "integrity": "sha512-l9X/E3cDb+xY3SWzlG1MOGt2usfEHGMNIaegaUGFsLkb3RCn/k8/TOXBcab+OndDI4TBtktT8/9BwwW8Vi9KUQ==",
       "dependencies": [
         "@rolldown/pluginutils@1.0.0-rc.7",
@@ -1323,7 +1323,7 @@
     "node-releases@2.0.38": {
       "integrity": "sha512-3qT/88Y3FbH/Kx4szpQQ4HzUbVrHPKTLVpVocKiLfoYvw9XSGOX2FmD2d6DrXbVYyAQTF2HeF6My8jmzx7/CRw=="
     },
-    "notistack@3.0.2_react@19.2.5_react-dom@19.2.5__react@19.2.5_csstype@3.2.3": {
+    "notistack@3.0.2_react@19.2.5_react-dom@19.2.5_csstype@3.2.3": {
       "integrity": "sha512-0R+/arLYbK5Hh7mEfR2adt0tyXJcCC9KkA2hc56FeWik2QN6Bm/S4uW+BjzDARsJth5u06nTjelSw/VSnB1YEA==",
       "dependencies": [
         "clsx@1.2.1",
@@ -1389,7 +1389,7 @@
         "scheduler"
       ]
     },
-    "react-hotkeys-hook@5.2.4_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+    "react-hotkeys-hook@5.2.4_react@19.2.5_react-dom@19.2.5": {
       "integrity": "sha512-BgKg+A1+TawkYluh5Bo4cTmcgMN5L29uhJbDUQdHwPX+qgXRjIPYU5kIDHyxnAwCkCBiu9V5OpB2mpyeluVF2A==",
       "dependencies": [
         "react",
@@ -1402,7 +1402,7 @@
     "react-is@19.2.5": {
       "integrity": "sha512-Dn0t8IQhCmeIT3wu+Apm1/YVsJXsGWi6k4sPdnBIdqMVtHtv0IGi6dcpNpNkNac0zB2uUAqNX3MHzN8c+z2rwQ=="
     },
-    "react-transition-group@4.4.5_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+    "react-transition-group@4.4.5_react@19.2.5_react-dom@19.2.5": {
       "integrity": "sha512-pZcd1MCJoiKiBR2NRxeCRg13uCXbydPnmB4EOeRrY7480qNWO8IIgQG6zlDkm6uRMsURXPuKq0GWtiM59a5Q6g==",
       "dependencies": [
         "@babel/runtime",
@@ -1507,7 +1507,7 @@
     "tslib@2.8.1": {
       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="
     },
-    "tss-react@4.9.20_@emotion+react@11.14.0__react@19.2.5_@mui+material@9.0.0__@emotion+react@11.14.0___react@19.2.5__@emotion+styled@11.14.1___@emotion+react@11.14.0____react@19.2.5___react@19.2.5__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_@emotion+styled@11.14.1__@emotion+react@11.14.0___react@19.2.5__react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+    "tss-react@4.9.20_@emotion+react@11.14.0_@mui+material@9.0.0_@types+react@19.2.14_react@19.2.5_@emotion+styled@11.14.1_react-dom@19.2.5": {
       "integrity": "sha512-+tecs5hEKZmPqNDtiq5Gx2GxjrQXbV5JuOeWkV+eOf99qiIUkE3Vcn07zNLHws06iPfH2H4t5VqoVjIdCMS7hw==",
       "dependencies": [
         "@emotion/cache",
@@ -1535,14 +1535,14 @@
       ],
       "bin": true
     },
-    "urs@0.0.8_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+    "urs@0.0.8_react@19.2.5_react-dom@19.2.5": {
       "integrity": "sha512-LaSSPpr91XrVA3vW2zPupw4K6DSQEDKdL4yQZX1mO2fpljIMpB5zctrjRvxLurelWSgKsHsCmfHNCImscryirQ==",
       "dependencies": [
         "react",
         "react-dom"
       ]
     },
-    "use-http@1.0.28_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+    "use-http@1.0.28_react@19.2.5_react-dom@19.2.5": {
       "integrity": "sha512-MWux13mGDBj+bzuTZJczDIjFu5r7D9eYrrKyKaCo+KFvoGRE9mpNHLK21pAJb2Sbdh/J85y5E4b2xR+IH2WOkg==",
       "dependencies": [
         "react",
@@ -1552,7 +1552,7 @@
         "utility-types"
       ]
     },
-    "use-ssr@1.0.25_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+    "use-ssr@1.0.25_react@19.2.5_react-dom@19.2.5": {
       "integrity": "sha512-VYF8kJKI+X7+U4XgGoUER2BUl0vIr+8OhlIhyldgSGE0KHMoDRXPvWeHUUeUktq7ACEOVLzXGq1+QRxcvtwvyQ==",
       "dependencies": [
         "react",
@@ -1562,7 +1562,7 @@
     "utility-types@3.11.0": {
       "integrity": "sha512-6Z7Ma2aVEWisaL6TvBCy7P8rm2LQoPv6dJ7ecIaIixHcwfbJ0x7mWdbcwlIM5IGQxPZSFYeqRCqlOOeKoJYMkw=="
     },
-    "vite-plugin-svgr@5.2.0_vite@8.0.10__yaml@1.10.3_typescript@6.0.3_yaml@1.10.3": {
+    "vite-plugin-svgr@5.2.0_vite@8.0.10_typescript@6.0.3_yaml@1.10.3": {
       "integrity": "sha512-qj2eAKF8C6PZWemVTvQA0xgQIcP1hHU6Buh7fl6BhvayWwnuxE+z417miKxeDvRWbDrupQ1oK99hfxElopJ3sQ==",
       "dependencies": [
         "@rollup/pluginutils",
@@ -1571,7 +1571,7 @@
         "vite"
       ]
     },
-    "vite-tsconfig-paths@6.1.1_vite@8.0.10__yaml@1.10.3_typescript@6.0.3_yaml@1.10.3": {
+    "vite-tsconfig-paths@6.1.1_vite@8.0.10_typescript@6.0.3_yaml@1.10.3": {
       "integrity": "sha512-2cihq7zliibCCZ8P9cKJrQBkfgdvcFkOOc3Y02o3GWUDLgqjWsZudaoiuOwO/gzTzy17cS5F7ZPo4bsnS4DGkg==",
       "dependencies": [
         "debug",
@@ -1613,6 +1613,7 @@
         "npm:@mui/icons-material@9.0.0",
         "npm:@mui/material@9.0.0",
         "npm:@mui/styles@^6.1.1",
+        "npm:@mui/utils@^6.4.9",
         "npm:@types/react-dom@19.2.3",
         "npm:@types/react@19.2.14",
         "npm:@vitejs/plugin-react@6.0.1",
