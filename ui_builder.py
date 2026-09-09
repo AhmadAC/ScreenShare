@@ -209,7 +209,7 @@ def fix_broken_vite_shims(ui_dir):
             pass
 
 def write_failsafe_client(ui_dir):
-    """Generates a resilient fallback application inside ui/build with full WebRTC audio/video broadcasting and candidate exchange."""
+    """Generates a resilient fallback application inside ui/build with mobile audio context unlocking and candidate exchange."""
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_assets_dir = os.path.join(ui_build_dir, "assets")
     os.makedirs(ui_assets_dir, exist_ok=True)
@@ -233,6 +233,8 @@ def write_failsafe_client(ui_dir):
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      user-select: none;
+      -webkit-user-select: none;
     }
     #header {
       position: absolute;
@@ -316,26 +318,27 @@ def write_failsafe_client(ui_dir):
     }
     #audioBanner {
       position: absolute;
-      top: 60px;
+      top: 65px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 30;
       background: #fabd2f;
       color: #282828;
-      padding: 10px 20px;
-      border-radius: 24px;
-      font-size: 13px;
+      padding: 12px 24px;
+      border-radius: 26px;
+      font-size: 14px;
       font-weight: bold;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
       display: none;
       cursor: pointer;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      text-align: center;
       animation: pulse 2s infinite;
     }
     @keyframes pulse {
       0% { transform: translateX(-50%) scale(1); }
-      50% { transform: translateX(-50%) scale(1.04); }
+      50% { transform: translateX(-50%) scale(1.03); }
       100% { transform: translateX(-50%) scale(1); }
     }
     #controls {
@@ -381,7 +384,7 @@ def write_failsafe_client(ui_dir):
   </div>
 
   <div id="audioBanner">
-    🔊 Tap anywhere on screen to enable live audio
+    🔊 Tap anywhere on screen to play live audio
   </div>
 
   <div id="videoContainer">
@@ -394,7 +397,7 @@ def write_failsafe_client(ui_dir):
   </div>
 
   <div id="controls">
-    <button id="btnToggleAudio">🔊 Sound: On</button>
+    <button id="btnToggleAudio">🔊 Sound: Playing</button>
     <button id="btnFullscreen">⛶ Fullscreen</button>
   </div>
 
@@ -431,6 +434,7 @@ def write_failsafe_client(ui_dir):
   let isSoundMuted = false;
   let remoteStream = new MediaStream();
   let hasAudioTrack = false;
+  let audioContextUnlocked = false;
   const peerConnections = {};
   const pendingIceCandidates = {};
 
@@ -455,15 +459,50 @@ def write_failsafe_client(ui_dir):
     }
   });
 
-  function updateViewerAudioStatus(playing) {
+  function unlockAudioEngine() {
+    if (audioContextUnlocked || isCreate) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        if (!window.__ssAudioContext) {
+          window.__ssAudioContext = new AudioCtx();
+        }
+        if (window.__ssAudioContext.state === 'suspended') {
+          window.__ssAudioContext.resume();
+        }
+      }
+      audioContextUnlocked = true;
+    } catch (_) {}
+  }
+
+  function unmutePlayback(e) {
     if (isCreate) return;
-    if (playing) {
-      audioBanner.style.display = 'none';
-      btnToggleAudio.innerText = "🔊 Sound: On";
-      btnToggleAudio.style.background = "#fabd2f";
-      btnToggleAudio.style.color = "#282828";
-      statusEl.innerText = "Live Broadcast (Sound Active)";
+    if (e) {
+      e.stopPropagation();
+    }
+
+    unlockAudioEngine();
+    audioBanner.style.display = 'none';
+
+    videoEl.muted = false;
+    videoEl.volume = 1.0;
+
+    btnToggleAudio.innerText = "🔊 Sound: Playing";
+    btnToggleAudio.style.background = "#fabd2f";
+    btnToggleAudio.style.color = "#282828";
+    statusEl.innerText = "Live Broadcast (Sound Active)";
+
+    videoEl.play().catch(() => {});
+  }
+
+  function toggleAudio(e) {
+    if (e) e.stopPropagation();
+    if (isCreate) return;
+
+    if (videoEl.muted) {
+      unmutePlayback();
     } else {
+      videoEl.muted = true;
       btnToggleAudio.innerText = "🔇 Sound: Muted";
       btnToggleAudio.style.background = "#3c3836";
       btnToggleAudio.style.color = "#fbf1c7";
@@ -471,37 +510,11 @@ def write_failsafe_client(ui_dir):
     }
   }
 
-  function unmutePlayback() {
-    if (isCreate) return;
-    videoEl.muted = false;
-    videoEl.volume = 1.0;
-    videoEl.play().then(() => {
-      updateViewerAudioStatus(true);
-    }).catch(() => {
-      videoEl.muted = true;
-      videoEl.play().catch(() => {});
-      updateViewerAudioStatus(false);
-    });
-  }
-
-  function toggleAudio(e) {
-    if (e) e.stopPropagation();
-    if (isCreate) return;
-    if (videoEl.muted) {
-      unmutePlayback();
-    } else {
-      videoEl.muted = true;
-      updateViewerAudioStatus(false);
-    }
-  }
-
   btnToggleAudio.addEventListener('click', toggleAudio);
   audioBanner.addEventListener('click', unmutePlayback);
-  videoContainer.addEventListener('click', () => {
-    if (!isCreate && hasAudioTrack && videoEl.muted) {
-      unmutePlayback();
-    }
-  });
+  audioBanner.addEventListener('touchend', unmutePlayback, { passive: true });
+  videoContainer.addEventListener('click', unmutePlayback);
+  videoContainer.addEventListener('touchend', unmutePlayback, { passive: true });
 
   btnStartCapture.addEventListener('click', () => {
     startShare();
@@ -613,22 +626,23 @@ def write_failsafe_client(ui_dir):
 
             hasAudioTrack = remoteStream.getAudioTracks().length > 0;
 
+            // Attempt unmuted play first; if autoplay blocked, display tap prompt banner
             videoEl.muted = false;
             videoEl.volume = 1.0;
             videoEl.play().then(() => {
               overlayMessage.style.display = 'none';
-              updateViewerAudioStatus(true);
+              audioBanner.style.display = 'none';
+              btnToggleAudio.innerText = "🔊 Sound: Playing";
+              btnToggleAudio.style.background = "#fabd2f";
+              btnToggleAudio.style.color = "#282828";
+              statusEl.innerText = "Live Broadcast (Sound Active)";
             }).catch(() => {
               videoEl.muted = true;
               videoEl.play().catch(() => {});
               overlayMessage.style.display = 'none';
-              if (hasAudioTrack) {
-                audioBanner.style.display = 'flex';
-                btnToggleAudio.innerText = "🔇 Sound: Muted (Tap to hear)";
-                statusEl.innerText = "Live Broadcast (Sound Ready)";
-              } else {
-                statusEl.innerText = "Live Broadcast";
-              }
+              audioBanner.style.display = 'flex';
+              btnToggleAudio.innerText = "🔇 Sound: Muted (Tap to hear)";
+              statusEl.innerText = "Live Broadcast (Tap for Sound)";
             });
           };
 
@@ -733,14 +747,16 @@ def write_failsafe_client(ui_dir):
       let screenStream = null;
       try {
         screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: { ideal: 60, max: 60 } },
+          video: { frameRate: { ideal: 60, max: 60 }, displaySurface: "monitor" },
           audio: {
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false,
             suppressLocalAudioPlayback: false
           },
-          systemAudio: 'include'
+          systemAudio: 'include',
+          selfBrowserSurface: 'exclude',
+          surfaceSwitching: 'include'
         });
       } catch (e1) {
         try {
@@ -780,9 +796,9 @@ def write_failsafe_client(ui_dir):
             )
           );
 
-          let loopbackAudio = null;
+          let audioStream = null;
           if (loopbackDevice) {
-            loopbackAudio = await navigator.mediaDevices.getUserMedia({
+            audioStream = await navigator.mediaDevices.getUserMedia({
               audio: {
                 deviceId: { exact: loopbackDevice.deviceId },
                 echoCancellation: false,
@@ -791,7 +807,7 @@ def write_failsafe_client(ui_dir):
               }
             });
           } else {
-            loopbackAudio = await navigator.mediaDevices.getUserMedia({
+            audioStream = await navigator.mediaDevices.getUserMedia({
               audio: {
                 echoCancellation: false,
                 noiseSuppression: false,
@@ -800,8 +816,8 @@ def write_failsafe_client(ui_dir):
             });
           }
 
-          if (loopbackAudio && loopbackAudio.getAudioTracks().length > 0) {
-            loopbackAudio.getAudioTracks().forEach(track => {
+          if (audioStream && audioStream.getAudioTracks().length > 0) {
+            audioStream.getAudioTracks().forEach(track => {
               track.enabled = !isSoundMuted;
               combinedStream.addTrack(track);
             });
