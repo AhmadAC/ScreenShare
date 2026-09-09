@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor, QMouseEvent
 from qr_util import get_qr_pixmap
-from bridge_server import comm, get_app_state, set_pending_action
+from bridge_server import comm, get_app_state, set_pending_action, update_app_state
 from system_util import run_audio_cmd, set_physical_mics_muted, get_active_audio_source
 
 class QROverlayDialog(QWidget):
@@ -261,25 +261,29 @@ class OverlayToolbar(QWidget):
         self.adjustSize()
 
     def toggle_share(self):
-        if get_app_state().get("sharing", False):
-            set_pending_action("stop_share")
-        else:
-            set_pending_action("start_share")
+        is_sharing = get_app_state().get("sharing", False)
+        set_pending_action("stop_share" if is_sharing else "start_share")
 
     def trigger_pause(self):
         set_pending_action("toggle_pause")
 
     def toggle_sound(self):
+        current_muted = get_app_state().get("soundMuted", False)
+        new_muted = not current_muted
+        update_app_state({"soundMuted": new_muted})
         set_pending_action("toggle_sound")
+        self.update_gui_state(get_app_state())
         if sys.platform.startswith("linux"):
             source = get_active_audio_source()
-            current_muted = get_app_state().get("soundMuted", False)
-            run_audio_cmd(["pactl", "set-source-mute", source, "0" if current_muted else "1"])
+            run_audio_cmd(["pactl", "set-source-mute", source, "1" if new_muted else "0"])
 
     def toggle_mic(self):
-        set_pending_action("toggle_mic")
         current_mic_muted = get_app_state().get("micMuted", False)
-        set_physical_mics_muted(not current_mic_muted)
+        new_mic_muted = not current_mic_muted
+        update_app_state({"micMuted": new_mic_muted})
+        set_pending_action("toggle_mic")
+        self.update_gui_state(get_app_state())
+        set_physical_mics_muted(new_mic_muted)
 
     def update_gui_state(self, state):
         if state.get("sharing", False):
