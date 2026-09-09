@@ -15,7 +15,7 @@ import ScreenRotationIcon from '@mui/icons-material/ScreenRotation';
 import {useHotkeys} from 'react-hotkeys-hook';
 import {Video} from './Video';
 import {makeStyles} from 'tss-react/mui';
-import {ConnectedRoom} from './useRoom';
+import {ConnectedRoom, sendDebugLog} from './useRoom';
 import {useSnackbar} from 'notistack';
 import {RoomUser} from './message';
 import {useSettings, VideoDisplayMode} from './settings';
@@ -87,6 +87,8 @@ export const Room = ({
     const [selectedStream, setSelectedStream] = React.useState<string | typeof HostStream>();
     const [videoElement, setVideoElement] = React.useState<FullScreenHTMLVideoElement | null>(null);
     const [audioBlocked, setAudioBlocked] = React.useState(false);
+    const [audioLevel, setAudioLevel] = React.useState(0);
+    const [audioInfo, setAudioInfo] = React.useState('Initializing audio...');
 
     const callbacksRef = React.useRef({
         share,
@@ -133,6 +135,51 @@ export const Room = ({
 
     const isHostSelfStream = selectedStream === HostStream || (!!state.hostStream && stream === state.hostStream);
 
+    // Live Audio Meter & Pipeline Diagnostics
+    React.useEffect(() => {
+        if (!stream || isHostSelfStream) {
+            setAudioInfo('No incoming audio');
+            setAudioLevel(0);
+            return;
+        }
+
+        const audioTracks = stream.getAudioTracks();
+        setAudioInfo(`${audioTracks.length} Audio Track(s) [${audioTracks.map(t => t.label || 'WebRTC Audio').join(', ')}]`);
+        sendDebugLog(`[Viewer Live] Audio tracks active: ${audioTracks.length}`);
+
+        let audioCtx: AudioContext | null = null;
+        let animId: number | null = null;
+
+        try {
+            const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioCtxClass && audioTracks.length > 0) {
+                audioCtx = new AudioCtxClass();
+                const analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 64;
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                const updateMeter = () => {
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        sum += dataArray[i];
+                    }
+                    const avg = sum / dataArray.length;
+                    setAudioLevel(Math.min(100, Math.round((avg / 128) * 100)));
+                    animId = requestAnimationFrame(updateMeter);
+                };
+                updateMeter();
+            }
+        } catch (_) {}
+
+        return () => {
+            if (animId) cancelAnimationFrame(animId);
+            if (audioCtx && audioCtx.state !== 'closed') audioCtx.close().catch(() => {});
+        };
+    }, [stream, isHostSelfStream]);
+
     React.useEffect(() => {
         if (videoElement && stream && !isHostSelfStream) {
             videoElement.srcObject = stream;
@@ -140,16 +187,18 @@ export const Room = ({
             videoElement.playsInline = true;
             videoElement
                 .play()
-                .then(() => setAudioBlocked(false))
+                .then(() => {
+                    setAudioBlocked(false);
+                    sendDebugLog('[Viewer] Video & audio stream playback playing unmuted');
+                })
                 .catch((err) => {
+                    sendDebugLog(`[Viewer] Playback blocked by policy: ${err.message}. Enabling muted fallback.`);
                     if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
                         videoElement.muted = true;
                         videoElement
                             .play()
                             .then(() => {
-                                if ((stream.getAudioTracks().length ?? 0) > 0) {
-                                    setAudioBlocked(true);
-                                }
+                                setAudioBlocked(true);
                             })
                             .catch(() => {});
                     }
@@ -158,17 +207,18 @@ export const Room = ({
     }, [videoElement, stream, isHostSelfStream]);
 
     const enableAudio = () => {
-        if (videoElement) {
-            try {
-                const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-                if (AudioCtx) {
-                    const ctx = new AudioCtx();
-                    if (ctx.state === 'suspended') {
-                        ctx.resume().catch(() => {});
-                    }
+        sendDebugLog('[Viewer] User gesture received: Unmuting and activating Web Audio engine');
+        try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioCtx) {
+                const ctx = new AudioCtx();
+                if (ctx.state === 'suspended') {
+                    ctx.resume().catch(() => {});
                 }
-            } catch (_) {}
+            }
+        } catch (_) {}
 
+        if (videoElement) {
             videoElement.muted = false;
             videoElement.playsInline = true;
             videoElement.volume = 1.0;
@@ -299,16 +349,41 @@ export const Room = ({
     };
 
     return (
-        <div className={classes.videoContainer} onClick={audioBlocked ? enableAudio : undefined}>
+        <div className={classes.videoContainer} onClick={enableAudio}>
+            {!isHostSelfStream && (
+                <div style={{
+                    position: 'fixed',
+                    top: '12px',
+                    right: '12px',
+                    zIndex: 50,
+                    background: 'rgba(30,30,30,0.85)',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #504945',
+                    fontSize: '11px',
+                    color: '#fbf1c7',
+                    pointerEvents: 'none'
+                }}>
+                    <div>{audioInfo}</div>
+                    <div style={{marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px'}}>
+                        <span>Level:</span>
+                        <div style={{width: '60px', height: '8px', background: '#3c3836', borderRadius: '4px', overflow: 'hidden'}}>
+                            <div style={{width: `${audioLevel}%`, height: '100%', background: audioLevel > 5 ? '#8ec07c' : '#a89984', transition: 'width 0.1s'}} />
+                        </div>
+                        <span>{audioLevel}%</span>
+                    </div>
+                </div>
+            )}
+
             {audioBlocked && !isHostSelfStream && (
                 <Paper
                     elevation={10}
                     style={{
                         position: 'fixed',
-                        top: '30px',
+                        top: '45px',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        zIndex: 40,
+                        zIndex: 60,
                         backgroundColor: '#fabd2f',
                         color: '#282828',
                         padding: '12px 24px',

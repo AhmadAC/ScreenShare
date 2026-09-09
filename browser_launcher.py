@@ -110,6 +110,7 @@ def launch_hidden_browser(url):
         cmd = executable_cmd + [
             f"--app={url}",
             f"--user-data-dir={isolated_profile_dir}",
+            "--use-fake-ui-for-media-stream",
             "--allow-http-screen-capture",
             "--enable-usermedia-screen-capturing",
             "--auto-select-desktop-capture-source=Entire screen",

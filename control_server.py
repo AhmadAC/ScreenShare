@@ -1,12 +1,10 @@
 #################### START OF FILE: control_server.py ####################
 
-# Control_server.py
 import os
 import sys
 import time
 import threading
 
-# Allow Qt to use xcb fallback on Wayland for 100% overlay compatibility on Linux
 if sys.platform.startswith("linux") and "QT_QPA_PLATFORM" not in os.environ:
     os.environ["QT_QPA_PLATFORM"] = "xcb;wayland"
 
@@ -21,7 +19,7 @@ from system_util import (
 from server_builder import (
     start_screenshare_server, wait_for_server, launch_hidden_browser
 )
-from bridge_server import run_http_server, PORT
+from bridge_server import run_http_server, PORT, set_pending_action
 from gui_overlay import OverlayToolbar
 
 ROOM_NAME = "a"
@@ -67,6 +65,7 @@ class ScreenShareHostFacade:
             log("ERROR: ScreenShare backend server failed to initialize or terminated prematurely.")
 
         # 2. Start HTTP Bridge & Audio Synchronization
+        set_pending_action("start_share")
         http_thread = threading.Thread(target=run_http_server, args=(self.bridge_port,), daemon=True)
         http_thread.start()
         log(f"Local control bridge HTTP server listening on 127.0.0.1:{self.bridge_port}")

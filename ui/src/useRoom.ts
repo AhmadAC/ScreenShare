@@ -42,6 +42,19 @@ export interface UseRoom {
     toggleSystemAudio: () => void;
 }
 
+export const sendDebugLog = (msg: string, detail?: any) => {
+    console.log(`[ScreenShare] ${msg}`, detail || '');
+    try {
+        fetch('http://127.0.0.1:5055/log', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({msg, detail}),
+        }).catch(() => {});
+    } catch (_) {}
+};
+
+sendDebugLog('[Client Init] Web client loaded. URL: ' + window.location.href);
+
 const relayConfig: Partial<RTCConfiguration> =
     window.location.search.indexOf('forceTurn=true') !== -1 ? {iceTransportPolicy: 'relay'} : {};
 
@@ -58,7 +71,9 @@ const hostSession = async ({
     done: () => void;
     stream: MediaStream;
 }): Promise<RTCPeerConnection> => {
+    sendDebugLog(`[Host] Initializing PeerConnection for viewer session ${sid}`);
     const peer = new RTCPeerConnection({...relayConfig, iceServers: ice});
+    
     peer.onicecandidate = (event) => {
         if (!event.candidate) {
             return;
@@ -67,6 +82,7 @@ const hostSession = async ({
     };
 
     peer.onconnectionstatechange = () => {
+        sendDebugLog(`[Host] PeerConnection state (${sid}): ${peer.connectionState}`);
         if (
             peer.connectionState === 'closed' ||
             peer.connectionState === 'disconnected' ||
@@ -77,7 +93,9 @@ const hostSession = async ({
         }
     };
 
-    stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+    const tracks = stream.getTracks();
+    sendDebugLog(`[Host] Adding ${tracks.length} track(s) to PC (${sid}):`, tracks.map(t => `${t.kind} (${t.label || 'unnamed'}, enabled: ${t.enabled})`));
+    tracks.forEach((track) => peer.addTrack(track, stream));
 
     const preferCodec = resolveCodecPlaceholder(loadSettings().preferCodec);
     if (preferCodec) {
@@ -111,6 +129,10 @@ const hostSession = async ({
         offerToReceiveVideo: true,
         offerToReceiveAudio: true,
     });
+    
+    const hasAudioMline = hostOffer.sdp?.includes('m=audio');
+    sendDebugLog(`[Host] Created Offer SDP (${sid}). Has audio m-line: ${hasAudioMline}`);
+
     await peer.setLocalDescription(hostOffer);
     send({type: 'hostoffer', payload: {value: hostOffer, sid: sid}});
 
@@ -130,6 +152,7 @@ const clientSession = async ({
     onTrack: (s: MediaStream) => void;
     done: () => void;
 }): Promise<RTCPeerConnection> => {
+    sendDebugLog(`[Viewer] Initializing PeerConnection for host session ${sid}`);
     const peer = new RTCPeerConnection({...relayConfig, iceServers: ice});
     peer.onicecandidate = (event) => {
         if (!event.candidate) {
@@ -138,6 +161,7 @@ const clientSession = async ({
         send({type: 'clientice', payload: {sid: sid, value: event.candidate}});
     };
     peer.onconnectionstatechange = () => {
+        sendDebugLog(`[Viewer] PeerConnection state (${sid}): ${peer.connectionState}`);
         if (
             peer.connectionState === 'closed' ||
             peer.connectionState === 'disconnected' ||
@@ -151,6 +175,7 @@ const clientSession = async ({
     let notified = false;
     const stream = new MediaStream();
     peer.ontrack = (event) => {
+        sendDebugLog(`[Viewer] ontrack received: ${event.track.kind} (${event.track.label})`);
         stream.addTrack(event.track);
         if (!notified) {
             notified = true;
@@ -187,6 +212,300 @@ export const useRoom = (config: UIConfig): UseRoom => {
 
     const [state, setState] = React.useState<RoomState>(false);
 
+    const share = React.useCallback(async () => {
+        if (isStartingShare.current || stream.current) {
+            return;
+        }
+        isStartingShare.current = true;
+        sendDebugLog('[Host] Starting screen & audio capture sequence...');
+
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+            sendDebugLog('[Host] ERROR: navigator.mediaDevices.getDisplayMedia is not supported');
+            enqueueSnackbar('Screensharing not supported in this browser.', {variant: 'error', persist: true});
+            isStartingShare.current = false;
+            fetch('http://127.0.0.1:5055/state', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({sharing: false}),
+            }).catch(() => {});
+            return;
+        }
+
+        try {
+            let screenStream: MediaStream | null = null;
+            try {
+                sendDebugLog('[Host] Invoking getDisplayMedia({ video, audio: true, systemAudio: "include" })...');
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        displaySurface: 'monitor',
+                        frameRate: { ideal: 60, max: 60 },
+                    } as any,
+                    audio: true,
+                    systemAudio: 'include',
+                    selfBrowserSurface: 'exclude',
+                    surfaceSwitching: 'include',
+                    monitorTypeSurfaces: 'include',
+                } as any);
+            } catch (err: any) {
+                sendDebugLog(`[Host] First getDisplayMedia attempt failed: ${err.message}. Retrying with flexible audio constraints...`);
+                try {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { frameRate: { ideal: 60, max: 60 } },
+                        audio: {
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false,
+                        } as any,
+                        systemAudio: 'include',
+                    } as any);
+                } catch (err2) {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: true,
+                        audio: true,
+                    });
+                }
+            }
+
+            if (!screenStream) {
+                sendDebugLog('[Host] Screen stream is null after getDisplayMedia prompt');
+                isStartingShare.current = false;
+                fetch('http://127.0.0.1:5055/state', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({sharing: false}),
+                }).catch(() => {});
+                return;
+            }
+
+            const videoTracks = screenStream.getVideoTracks();
+            const audioTracks = screenStream.getAudioTracks();
+            sendDebugLog(`[Host] getDisplayMedia success! Video tracks: ${videoTracks.length}, Audio tracks: ${audioTracks.length}`);
+
+            const combinedStream = new MediaStream();
+            videoTracks.forEach((track) => combinedStream.addTrack(track));
+
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            let audioCtx: AudioContext | null = null;
+            let audioDest: MediaStreamAudioDestinationNode | null = null;
+
+            if (AudioContextClass) {
+                try {
+                    audioCtx = new AudioContextClass();
+                    if (audioCtx.state === 'suspended') {
+                        audioCtx.resume().catch(() => {});
+                    }
+                    audioCtxRef.current = audioCtx;
+                    audioDest = audioCtx.createMediaStreamDestination();
+
+                    const sysGain = audioCtx.createGain();
+                    sysGain.gain.setValueAtTime(isSoundMutedRef.current ? 0 : 1, audioCtx.currentTime);
+                    sysGain.connect(audioDest);
+                    sysGainRef.current = sysGain;
+
+                    const micGain = audioCtx.createGain();
+                    micGain.gain.setValueAtTime(isMicMutedRef.current ? 0 : 1, audioCtx.currentTime);
+                    micGain.connect(audioDest);
+                    micGainRef.current = micGain;
+                } catch (audioInitErr) {
+                    sendDebugLog('[Host] AudioContext initialization notice:', audioInitErr);
+                }
+            }
+
+            if (audioTracks.length > 0) {
+                sendDebugLog('[Host] Using primary display media audio track:', audioTracks[0].label);
+                sysStreamRef.current = new MediaStream(audioTracks);
+                if (audioCtx && sysGainRef.current) {
+                    try {
+                        const sysSource = audioCtx.createMediaStreamSource(sysStreamRef.current);
+                        sysSource.connect(sysGainRef.current);
+                    } catch (e) {
+                        sendDebugLog('[Host] Warning: Could not pipe display audio through GainNode:', e);
+                    }
+                }
+            } else {
+                sendDebugLog('[Host] Display media returned 0 audio tracks! Probing device loopback audio...');
+                try {
+                    let audioDevices: MediaDeviceInfo[] = [];
+                    try {
+                        audioDevices = await navigator.mediaDevices.enumerateDevices();
+                    } catch (_) {}
+
+                    const isMonitorLabel = (label: string) => {
+                        const l = label.toLowerCase();
+                        return (
+                            l.includes('stereo mix') ||
+                            l.includes('what u hear') ||
+                            l.includes('cable output') ||
+                            l.includes('virtual') ||
+                            l.includes('wave out') ||
+                            l.includes('computer sound') ||
+                            l.includes('computersound') ||
+                            l.includes('monitor of') ||
+                            l.includes('.monitor') ||
+                            l.includes('mix') ||
+                            l.includes('loopback')
+                        );
+                    };
+
+                    const loopbackDevice = audioDevices.find(
+                        (d) => d.kind === 'audioinput' && isMonitorLabel(d.label) && d.deviceId
+                    );
+
+                    sendDebugLog(`[Host] Device probe loopback candidate: ${loopbackDevice?.label || 'None detected'}`);
+
+                    const fallbackAudio = await navigator.mediaDevices.getUserMedia({
+                        audio: loopbackDevice
+                            ? {
+                                  deviceId: { exact: loopbackDevice.deviceId },
+                                  echoCancellation: false,
+                                  noiseSuppression: false,
+                                  autoGainControl: false,
+                              }
+                            : {
+                                  echoCancellation: false,
+                                  noiseSuppression: false,
+                                  autoGainControl: false,
+                              },
+                    });
+
+                    if (fallbackAudio && fallbackAudio.getAudioTracks().length > 0) {
+                        sendDebugLog(`[Host] Fallback audio stream acquired: ${fallbackAudio.getAudioTracks()[0].label}`);
+                        sysStreamRef.current = fallbackAudio;
+                        if (audioCtx && sysGainRef.current) {
+                            const sysSource = audioCtx.createMediaStreamSource(fallbackAudio);
+                            sysSource.connect(sysGainRef.current);
+                        }
+                    }
+                } catch (audioErr) {
+                    sendDebugLog('[Host] Fallback loopback audio acquisition error:', audioErr);
+                }
+            }
+
+            try {
+                let audioDevices: MediaDeviceInfo[] = [];
+                try {
+                    audioDevices = await navigator.mediaDevices.enumerateDevices();
+                } catch (_) {}
+
+                const physicalMic = audioDevices.find(
+                    (d) =>
+                        d.kind === 'audioinput' &&
+                        !d.label.toLowerCase().includes('stereo mix') &&
+                        !d.label.toLowerCase().includes('what u hear') &&
+                        !d.label.toLowerCase().includes('cable output') &&
+                        !d.label.toLowerCase().includes('monitor') &&
+                        !d.label.toLowerCase().includes('computersound') &&
+                        !d.label.toLowerCase().includes('computer sound') &&
+                        d.deviceId
+                );
+
+                if (physicalMic) {
+                    const micAudio = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            deviceId: { exact: physicalMic.deviceId },
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                        },
+                    });
+                    if (micAudio && micAudio.getAudioTracks().length > 0) {
+                        sendDebugLog(`[Host] Physical microphone attached: ${physicalMic.label}`);
+                        micStreamRef.current = micAudio;
+                        if (isMicMutedRef.current) {
+                            micAudio.getAudioTracks().forEach((t) => (t.enabled = false));
+                        }
+                        if (audioCtx && micGainRef.current) {
+                            const micSource = audioCtx.createMediaStreamSource(micAudio);
+                            micSource.connect(micGainRef.current);
+                        }
+                    }
+                }
+            } catch (_) {}
+
+            if (audioDest && audioDest.stream.getAudioTracks().length > 0) {
+                const mixedAudioTrack = audioDest.stream.getAudioTracks()[0];
+                sendDebugLog(`[Host] Attached mixed audio track to combined broadcast stream (${mixedAudioTrack.id})`);
+                combinedStream.addTrack(mixedAudioTrack);
+            } else if (sysStreamRef.current) {
+                sysStreamRef.current.getAudioTracks().forEach((t) => combinedStream.addTrack(t));
+            }
+
+            stream.current = combinedStream;
+        } catch (e: any) {
+            sendDebugLog(`[Host] CRITICAL: Could not start presentation: ${e.message || e.name || e}`);
+            enqueueSnackbar(`Could not start presentation: ${e.message || e.name || e}`, {
+                variant: 'error',
+                persist: true,
+            });
+            isStartingShare.current = false;
+            fetch('http://127.0.0.1:5055/state', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({sharing: false}),
+            }).catch(() => {});
+            return;
+        } finally {
+            isStartingShare.current = false;
+        }
+
+        stream.current?.getVideoTracks()[0].addEventListener('ended', () => stopShare());
+        setState((current) => (current ? {
+            ...current,
+            hostStream: stream.current,
+            paused: false,
+            micMuted: isMicMutedRef.current,
+            soundMuted: isSoundMutedRef.current,
+        } : current));
+
+        if (conn.current && conn.current.readyState === WebSocket.OPEN) {
+            conn.current.send(JSON.stringify({type: 'share', payload: {}}));
+        }
+    }, [enqueueSnackbar]);
+
+    const stopShare = async () => {
+        sendDebugLog('[Host] Stopping screen share...');
+        if (pauseDataRef.current.intervalId) {
+            window.clearInterval(pauseDataRef.current.intervalId);
+        }
+        pauseDataRef.current.frozenStream?.getTracks().forEach((t) => {
+            if (t.kind === 'video') t.stop();
+        });
+        pauseDataRef.current = {};
+
+        micStreamRef.current?.getTracks().forEach((t) => t.stop());
+        micStreamRef.current = null;
+        if (sysStreamRef.current && sysStreamRef.current !== stream.current) {
+            sysStreamRef.current.getTracks().forEach((t) => t.stop());
+        }
+        sysStreamRef.current = null;
+
+        if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+            audioCtxRef.current.close().catch(() => {});
+        }
+        audioCtxRef.current = null;
+        sysGainRef.current = null;
+        micGainRef.current = null;
+
+        Object.values(host.current).forEach((peer) => {
+            peer.close();
+        });
+        host.current = {};
+        stream.current?.getTracks().forEach((track) => track.stop());
+        stream.current = undefined;
+
+        if (conn.current && conn.current.readyState === WebSocket.OPEN) {
+            conn.current.send(JSON.stringify({type: 'stopshare', payload: {}}));
+        }
+
+        setState((current) => (current ? {
+            ...current,
+            hostStream: undefined,
+            paused: false,
+            micMuted: isMicMutedRef.current,
+            soundMuted: isSoundMutedRef.current,
+        } : current));
+    };
+
     const room: FCreateRoom = React.useCallback(
         (create) => {
             return new Promise<void>((resolve) => {
@@ -211,6 +530,11 @@ export const useRoom = (config: UIConfig): UseRoom => {
                                 soundMuted: isSoundMutedRef.current,
                             });
                             setRoomID(event.payload.id);
+
+                            if (getFromURL('create') === 'true') {
+                                sendDebugLog('[Host] Room created, starting broadcast...');
+                                share();
+                            }
                         } else {
                             resolve();
                             ws.close(1000, 'received unknown event');
@@ -226,6 +550,7 @@ export const useRoom = (config: UIConfig): UseRoom => {
                             return;
                         case 'hostsession':
                             if (!stream.current) {
+                                sendDebugLog('[Host] Received hostsession but stream.current is null!');
                                 return;
                             }
 
@@ -302,11 +627,13 @@ export const useRoom = (config: UIConfig): UseRoom => {
                             host.current[event.payload.sid]?.addIceCandidate(event.payload.value);
                             return;
                         case 'clientanswer':
+                            sendDebugLog(`[Host] Received client answer (${event.payload.sid})`);
                             host.current[event.payload.sid]?.setRemoteDescription(
                                 event.payload.value
                             );
                             return;
                         case 'hostoffer':
+                            sendDebugLog(`[Viewer] Received host offer (${event.payload.sid})`);
                             (async () => {
                                 await client.current[event.payload.sid]?.setRemoteDescription(
                                     event.payload.value
@@ -365,285 +692,8 @@ export const useRoom = (config: UIConfig): UseRoom => {
                 };
             });
         },
-        [setState, setRoomID]
+        [setState, setRoomID, share]
     );
-
-    const share = async () => {
-        if (isStartingShare.current || stream.current) {
-            return;
-        }
-        isStartingShare.current = true;
-
-        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
-            enqueueSnackbar('Screensharing not supported in this browser.', {variant: 'error', persist: true});
-            isStartingShare.current = false;
-            fetch('http://127.0.0.1:5055/state', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({sharing: false}),
-            }).catch(() => {});
-            return;
-        }
-
-        try {
-            let screenStream: MediaStream | null = null;
-            try {
-                screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        displaySurface: 'monitor',
-                        frameRate: { ideal: 60, max: 60 },
-                    } as any,
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false,
-                    } as any,
-                    systemAudio: 'include',
-                    selfBrowserSurface: 'exclude',
-                    surfaceSwitching: 'include',
-                    monitorTypeSurfaces: 'include',
-                } as any);
-            } catch (err) {
-                try {
-                    screenStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: { frameRate: { ideal: 60, max: 60 } },
-                        audio: true,
-                    });
-                } catch (err2) {
-                    screenStream = await navigator.mediaDevices.getDisplayMedia({
-                        video: true,
-                        audio: false,
-                    });
-                }
-            }
-
-            if (!screenStream) {
-                isStartingShare.current = false;
-                fetch('http://127.0.0.1:5055/state', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({sharing: false}),
-                }).catch(() => {});
-                return;
-            }
-
-            const combinedStream = new MediaStream();
-            screenStream.getVideoTracks().forEach((track) => combinedStream.addTrack(track));
-
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            let audioCtx: AudioContext | null = null;
-            let audioDest: MediaStreamAudioDestinationNode | null = null;
-
-            if (AudioContextClass) {
-                try {
-                    audioCtx = new AudioContextClass();
-                    if (audioCtx.state === 'suspended') {
-                        audioCtx.resume().catch(() => {});
-                    }
-                    audioCtxRef.current = audioCtx;
-                    audioDest = audioCtx.createMediaStreamDestination();
-
-                    const sysGain = audioCtx.createGain();
-                    sysGain.gain.setValueAtTime(isSoundMutedRef.current ? 0 : 1, audioCtx.currentTime);
-                    sysGain.connect(audioDest);
-                    sysGainRef.current = sysGain;
-
-                    const micGain = audioCtx.createGain();
-                    micGain.gain.setValueAtTime(isMicMutedRef.current ? 0 : 1, audioCtx.currentTime);
-                    micGain.connect(audioDest);
-                    micGainRef.current = micGain;
-                } catch (audioInitErr) {
-                    console.warn('AudioContext initialization notice:', audioInitErr);
-                }
-            }
-
-            const displayAudioTracks = screenStream.getAudioTracks();
-            if (displayAudioTracks.length > 0) {
-                sysStreamRef.current = new MediaStream(displayAudioTracks);
-                if (audioCtx && sysGainRef.current) {
-                    try {
-                        const sysSource = audioCtx.createMediaStreamSource(sysStreamRef.current);
-                        sysSource.connect(sysGainRef.current);
-                    } catch (e) {
-                        console.warn('Could not pipe display audio through GainNode:', e);
-                    }
-                }
-            } else {
-                try {
-                    let audioDevices: MediaDeviceInfo[] = [];
-                    try {
-                        audioDevices = await navigator.mediaDevices.enumerateDevices();
-                    } catch (_) {}
-
-                    const isMonitorLabel = (label: string) => {
-                        const l = label.toLowerCase();
-                        return (
-                            l.includes('stereo mix') ||
-                            l.includes('what u hear') ||
-                            l.includes('cable output') ||
-                            l.includes('virtual') ||
-                            l.includes('wave out') ||
-                            l.includes('computer sound') ||
-                            l.includes('computersound') ||
-                            l.includes('monitor of') ||
-                            l.includes('.monitor') ||
-                            l.includes('mix') ||
-                            l.includes('loopback')
-                        );
-                    };
-
-                    const loopbackDevice = audioDevices.find(
-                        (d) => d.kind === 'audioinput' && isMonitorLabel(d.label) && d.deviceId
-                    );
-
-                    const fallbackAudio = await navigator.mediaDevices.getUserMedia({
-                        audio: loopbackDevice
-                            ? {
-                                  deviceId: { exact: loopbackDevice.deviceId },
-                                  echoCancellation: false,
-                                  noiseSuppression: false,
-                                  autoGainControl: false,
-                              }
-                            : {
-                                  echoCancellation: false,
-                                  noiseSuppression: false,
-                                  autoGainControl: false,
-                              },
-                    });
-
-                    if (fallbackAudio && fallbackAudio.getAudioTracks().length > 0) {
-                        sysStreamRef.current = fallbackAudio;
-                        if (audioCtx && sysGainRef.current) {
-                            const sysSource = audioCtx.createMediaStreamSource(fallbackAudio);
-                            sysSource.connect(sysGainRef.current);
-                        }
-                    }
-                } catch (audioErr) {
-                    console.warn('Fallback loopback audio acquisition notice:', audioErr);
-                }
-            }
-
-            try {
-                let audioDevices: MediaDeviceInfo[] = [];
-                try {
-                    audioDevices = await navigator.mediaDevices.enumerateDevices();
-                } catch (_) {}
-
-                const physicalMic = audioDevices.find(
-                    (d) =>
-                        d.kind === 'audioinput' &&
-                        !d.label.toLowerCase().includes('stereo mix') &&
-                        !d.label.toLowerCase().includes('what u hear') &&
-                        !d.label.toLowerCase().includes('cable output') &&
-                        !d.label.toLowerCase().includes('monitor') &&
-                        !d.label.toLowerCase().includes('computersound') &&
-                        !d.label.toLowerCase().includes('computer sound') &&
-                        d.deviceId
-                );
-
-                if (physicalMic) {
-                    const micAudio = await navigator.mediaDevices.getUserMedia({
-                        audio: {
-                            deviceId: { exact: physicalMic.deviceId },
-                            echoCancellation: true,
-                            noiseSuppression: true,
-                            autoGainControl: true,
-                        },
-                    });
-                    if (micAudio && micAudio.getAudioTracks().length > 0) {
-                        micStreamRef.current = micAudio;
-                        if (isMicMutedRef.current) {
-                            micAudio.getAudioTracks().forEach((t) => (t.enabled = false));
-                        }
-                        if (audioCtx && micGainRef.current) {
-                            const micSource = audioCtx.createMediaStreamSource(micAudio);
-                            micSource.connect(micGainRef.current);
-                        }
-                    }
-                }
-            } catch (_) {}
-
-            if (audioDest && audioDest.stream.getAudioTracks().length > 0) {
-                combinedStream.addTrack(audioDest.stream.getAudioTracks()[0]);
-            } else {
-                if (sysStreamRef.current) {
-                    sysStreamRef.current.getAudioTracks().forEach((t) => combinedStream.addTrack(t));
-                }
-            }
-
-            stream.current = combinedStream;
-        } catch (e: any) {
-            enqueueSnackbar(`Could not start presentation: ${e.message || e.name || e}`, {
-                variant: 'error',
-                persist: true,
-            });
-            isStartingShare.current = false;
-            fetch('http://127.0.0.1:5055/state', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({sharing: false}),
-            }).catch(() => {});
-            return;
-        } finally {
-            isStartingShare.current = false;
-        }
-
-        stream.current?.getVideoTracks()[0].addEventListener('ended', () => stopShare());
-        setState((current) => (current ? {
-            ...current,
-            hostStream: stream.current,
-            paused: false,
-            micMuted: isMicMutedRef.current,
-            soundMuted: isSoundMutedRef.current,
-        } : current));
-
-        if (conn.current && conn.current.readyState === WebSocket.OPEN) {
-            conn.current.send(JSON.stringify({type: 'share', payload: {}}));
-        }
-    };
-
-    const stopShare = async () => {
-        if (pauseDataRef.current.intervalId) {
-            window.clearInterval(pauseDataRef.current.intervalId);
-        }
-        pauseDataRef.current.frozenStream?.getTracks().forEach((t) => {
-            if (t.kind === 'video') t.stop();
-        });
-        pauseDataRef.current = {};
-
-        micStreamRef.current?.getTracks().forEach((t) => t.stop());
-        micStreamRef.current = null;
-        if (sysStreamRef.current && sysStreamRef.current !== stream.current) {
-            sysStreamRef.current.getTracks().forEach((t) => t.stop());
-        }
-        sysStreamRef.current = null;
-
-        if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-            audioCtxRef.current.close().catch(() => {});
-        }
-        audioCtxRef.current = null;
-        sysGainRef.current = null;
-        micGainRef.current = null;
-
-        Object.values(host.current).forEach((peer) => {
-            peer.close();
-        });
-        host.current = {};
-        stream.current?.getTracks().forEach((track) => track.stop());
-        stream.current = undefined;
-
-        if (conn.current && conn.current.readyState === WebSocket.OPEN) {
-            conn.current.send(JSON.stringify({type: 'stopshare', payload: {}}));
-        }
-
-        setState((current) => (current ? {
-            ...current,
-            hostStream: undefined,
-            paused: false,
-            micMuted: isMicMutedRef.current,
-            soundMuted: isSoundMutedRef.current,
-        } : current));
-    };
 
     const togglePause = async () => {
         if (!stream.current || stream.current.getVideoTracks().length === 0) return;
@@ -732,6 +782,7 @@ export const useRoom = (config: UIConfig): UseRoom => {
     const toggleMic = () => {
         isMicMutedRef.current = !isMicMutedRef.current;
         const isMuted = isMicMutedRef.current;
+        sendDebugLog(`[Host] Toggling microphone: ${isMuted ? 'Muted' : 'Unmuted'}`);
         if (micGainRef.current && audioCtxRef.current) {
             micGainRef.current.gain.setValueAtTime(
                 isMuted ? 0 : 1,
@@ -751,6 +802,7 @@ export const useRoom = (config: UIConfig): UseRoom => {
     const toggleSystemAudio = () => {
         isSoundMutedRef.current = !isSoundMutedRef.current;
         const isMuted = isSoundMutedRef.current;
+        sendDebugLog(`[Host] Toggling system audio: ${isMuted ? 'Muted' : 'Unmuted'}`);
         if (sysGainRef.current && audioCtxRef.current) {
             sysGainRef.current.gain.setValueAtTime(
                 isMuted ? 0 : 1,
@@ -793,7 +845,7 @@ export const useRoom = (config: UIConfig): UseRoom => {
                 room({type: 'join', payload: {id: roomID}});
             }
         }
-    }, []);
+    }, [config, room, roomID]);
 
     return {state, room, share, stopShare, setName, togglePause, toggleMic, toggleSystemAudio};
 };
