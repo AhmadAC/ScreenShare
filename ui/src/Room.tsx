@@ -89,6 +89,26 @@ export const Room = ({
     const [videoElement, setVideoElement] = React.useState<FullScreenHTMLVideoElement | null>(null);
     const [audioBlocked, setAudioBlocked] = React.useState(false);
 
+    const callbacksRef = React.useRef({
+        share,
+        stopShare,
+        togglePause,
+        toggleMic,
+        toggleSystemAudio,
+        hasHostStream: !!state.hostStream,
+    });
+
+    React.useEffect(() => {
+        callbacksRef.current = {
+            share,
+            stopShare,
+            togglePause,
+            toggleMic,
+            toggleSystemAudio,
+            hasHostStream: !!state.hostStream,
+        };
+    }, [share, stopShare, togglePause, toggleMic, toggleSystemAudio, state.hostStream]);
+
     useShowOnMouseMovement(setShowControl);
 
     const handleFullscreen = useCallback(() => requestFullscreen(videoElement), [videoElement]);
@@ -122,7 +142,6 @@ export const Room = ({
                 .play()
                 .then(() => setAudioBlocked(false))
                 .catch((err) => {
-                    console.log('Could not play main video', err);
                     if (err.name === 'NotAllowedError') {
                         videoElement.muted = true;
                         videoElement
@@ -132,9 +151,7 @@ export const Room = ({
                                     setAudioBlocked(true);
                                 }
                             })
-                            .catch((retryErr) =>
-                                console.log('Could not play main video with mute', retryErr)
-                            );
+                            .catch(() => {});
                     }
                 });
         }
@@ -146,11 +163,10 @@ export const Room = ({
             videoElement
                 .play()
                 .then(() => setAudioBlocked(false))
-                .catch((err) => console.log('Failed to unmute video', err));
+                .catch(() => {});
         }
     };
 
-    // Calculate the accurate LAN viewer URL for copying
     const serverHost =
         (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') && config?.externalIP
             ? config.externalIP
@@ -216,26 +232,27 @@ export const Room = ({
     // Polling background loop for OS Global Hotkey and PySide6 GUI
     React.useEffect(() => {
         const interval = setInterval(() => {
-            fetch('http://127.0.0.1:5055/poll')
+            fetch('http://127.0.0.1:5055/poll?t=' + Date.now())
                 .then((res) => res.json())
                 .then((data) => {
+                    const cb = callbacksRef.current;
                     if (data.action === 'toggle_pause') {
-                        togglePause();
+                        cb.togglePause();
                     } else if (data.action === 'start_share') {
-                        if (!state.hostStream) share();
+                        if (!cb.hasHostStream) cb.share();
                     } else if (data.action === 'stop_share') {
-                        if (state.hostStream) stopShare();
+                        if (cb.hasHostStream) cb.stopShare();
                     } else if (data.action === 'toggle_mic') {
-                        toggleMic();
+                        cb.toggleMic();
                     } else if (data.action === 'toggle_sound') {
-                        toggleSystemAudio();
+                        cb.toggleSystemAudio();
                     }
                 })
                 .catch(() => {});
         }, 300);
 
         return () => clearInterval(interval);
-    }, [state.hostStream, togglePause, share, stopShare, toggleMic, toggleSystemAudio]);
+    }, []);
 
     // Post active streaming state back to PySide6 GUI for synchronization
     React.useEffect(() => {
@@ -428,7 +445,7 @@ export const Room = ({
                                             }
                                             
                                             if (window.screen?.orientation?.lock) {
-                                                await window.screen.orientation.lock('landscape').catch(e => console.log('Orientation lock unsupported:', e));
+                                                await window.screen.orientation.lock('landscape').catch((e) => console.log('Orientation lock unsupported:', e));
                                             }
                                         } else {
                                             if (window.screen?.orientation?.unlock) {

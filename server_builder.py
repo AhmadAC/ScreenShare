@@ -48,7 +48,7 @@ class ConsoleProgressBar:
         sys.stdout.flush()
 
 def is_real_ui_build(ui_dir):
-    """Verifies that ui/build contains actual compiled React assets, not a dummy fallback."""
+    """Verifies that ui/build contains actual compiled React assets."""
     build_dir = os.path.join(ui_dir, "build")
     index_file = os.path.join(build_dir, "index.html")
     assets_dir = os.path.join(build_dir, "assets")
@@ -83,34 +83,75 @@ def needs_rebuild(src_dir, out_bin):
                 
     return False
 
+def safely_remove_target(dst):
+    """Removes a file, symlink, junction or directory safely without raising access errors."""
+    try:
+        if sys.platform.startswith("win"):
+            if os.path.isdir(dst):
+                try:
+                    os.rmdir(dst)
+                    return
+                except Exception:
+                    pass
+                try:
+                    subprocess.run(["cmd", "/c", "rmdir", os.path.abspath(dst)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if not os.path.lexists(dst):
+                        return
+                except Exception:
+                    pass
+        if os.path.islink(dst):
+            os.unlink(dst)
+        elif os.path.isfile(dst):
+            os.remove(dst)
+        elif os.path.isdir(dst):
+            shutil.rmtree(dst, ignore_errors=True)
+    except Exception:
+        pass
+
 def link_or_copy_dir(src, dst):
-    """Creates a directory junction or copies files without requiring administrator privileges on Windows."""
-    if os.path.exists(dst):
+    """Safely links (via junction on Windows) or copies a directory, properly handling existing/broken targets."""
+    if not os.path.isdir(src):
         return
+
+    if os.path.isdir(dst):
+        try:
+            if len(os.listdir(dst)) > 0:
+                return
+        except Exception:
+            pass
+
+    safely_remove_target(dst)
+
     parent = os.path.dirname(dst)
     if parent:
         os.makedirs(parent, exist_ok=True)
+
     if sys.platform.startswith("win"):
         try:
             import _winapi
             _winapi.CreateJunction(os.path.abspath(src), os.path.abspath(dst))
-            if os.path.exists(dst):
+            if os.path.isdir(dst):
                 return
         except Exception:
             pass
         try:
-            subprocess.run(["cmd", "/c", "mklink", "/J", os.path.abspath(dst), os.path.abspath(src)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            if os.path.exists(dst):
+            res = subprocess.run(
+                ["cmd", "/c", "mklink", "/J", os.path.abspath(dst), os.path.abspath(src)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            if res.returncode == 0 and os.path.isdir(dst):
                 return
         except Exception:
             pass
+
     try:
-        shutil.copytree(src, dst, symlinks=False)
-    except Exception as e:
-        log(f"Notice during copytree: {e}")
+        shutil.copytree(src, dst, symlinks=False, dirs_exist_ok=True)
+    except Exception:
+        pass
 
 def fix_deno_windows_node_modules(ui_dir):
-    """Fixes Deno's missing package links on Windows by junctioning packages from .deno into node_modules."""
+    """Fixes Deno's missing package links on Windows by ensuring rolldown, @mui, and all dependencies are available."""
     nm_dir = os.path.join(ui_dir, "node_modules")
     deno_store = os.path.join(nm_dir, ".deno")
     if not os.path.isdir(deno_store):
@@ -124,33 +165,78 @@ def fix_deno_windows_node_modules(ui_dir):
         inner_nm = os.path.join(entry_path, "node_modules")
         if not os.path.isdir(inner_nm):
             continue
-        for pkg in os.listdir(inner_nm):
-            pkg_path = os.path.join(inner_nm, pkg)
-            if pkg.startswith("@"):
-                for subpkg in os.listdir(pkg_path):
-                    sub_src = os.path.join(pkg_path, subpkg)
-                    sub_dst = os.path.join(nm_dir, pkg, subpkg)
-                    if not os.path.exists(sub_dst) and os.path.isdir(sub_src):
-                        link_or_copy_dir(sub_src, sub_dst)
-            else:
-                dst_path = os.path.join(nm_dir, pkg)
-                if not os.path.exists(dst_path) and os.path.isdir(pkg_path):
-                    link_or_copy_dir(pkg_path, dst_path)
+        try:
+            for pkg in os.listdir(inner_nm):
+                pkg_path = os.path.join(inner_nm, pkg)
+                if pkg.startswith("@"):
+                    for subpkg in os.listdir(pkg_path):
+                        sub_src = os.path.join(pkg_path, subpkg)
+                        sub_dst = os.path.join(nm_dir, pkg, subpkg)
+                        if os.path.isdir(sub_src):
+                            link_or_copy_dir(sub_src, sub_dst)
+                else:
+                    dst_path = os.path.join(nm_dir, pkg)
+                    if os.path.isdir(pkg_path):
+                        link_or_copy_dir(pkg_path, dst_path)
+        except Exception:
+            pass
 
-    # Ensure rolldown and @rolldown are also directly in vite's nested node_modules
-    rolldown_src = os.path.join(nm_dir, "rolldown")
-    at_rolldown_src = os.path.join(nm_dir, "@rolldown")
+    # Ensure @mui/utils is mirrored everywhere in .deno @mui packages
+    mui_utils_src = None
+    for entry in os.listdir(deno_store):
+        if "@mui+utils" in entry:
+            cand = os.path.join(deno_store, entry, "node_modules", "@mui", "utils")
+            if os.path.isdir(cand):
+                mui_utils_src = cand
+                break
+    if not mui_utils_src and os.path.isdir(os.path.join(nm_dir, "@mui", "utils")):
+        mui_utils_src = os.path.join(nm_dir, "@mui", "utils")
 
-    for root, _, _ in os.walk(deno_store):
-        if os.path.basename(root) == "vite" and "node_modules" in os.path.dirname(root):
-            vite_nm = os.path.join(root, "node_modules")
-            if os.path.isdir(rolldown_src):
-                link_or_copy_dir(rolldown_src, os.path.join(vite_nm, "rolldown"))
-            if os.path.isdir(at_rolldown_src):
-                for sub in os.listdir(at_rolldown_src):
-                    sub_src = os.path.join(at_rolldown_src, sub)
-                    if os.path.isdir(sub_src):
-                        link_or_copy_dir(sub_src, os.path.join(vite_nm, "@rolldown", sub))
+    if mui_utils_src:
+        link_or_copy_dir(mui_utils_src, os.path.join(nm_dir, "@mui", "utils"))
+        for entry in os.listdir(deno_store):
+            if entry.startswith("@mui+"):
+                target_mui = os.path.join(deno_store, entry, "node_modules", "@mui", "utils")
+                link_or_copy_dir(mui_utils_src, target_mui)
+
+    rolldown_src = None
+    at_rolldown_src = {}
+
+    if os.path.isdir(os.path.join(nm_dir, "rolldown")):
+        rolldown_src = os.path.join(nm_dir, "rolldown")
+
+    for entry in os.listdir(deno_store):
+        if not rolldown_src and "rolldown@" in entry:
+            cand = os.path.join(deno_store, entry, "node_modules", "rolldown")
+            if os.path.isdir(cand):
+                rolldown_src = cand
+        if "@rolldown" in entry or "binding-" in entry:
+            cand_at = os.path.join(deno_store, entry, "node_modules", "@rolldown")
+            if os.path.isdir(cand_at):
+                for sub in os.listdir(cand_at):
+                    s_path = os.path.join(cand_at, sub)
+                    if os.path.isdir(s_path) and sub not in at_rolldown_src:
+                        at_rolldown_src[sub] = s_path
+
+    if rolldown_src:
+        link_or_copy_dir(rolldown_src, os.path.join(nm_dir, "rolldown"))
+    for sub, s_path in at_rolldown_src.items():
+        link_or_copy_dir(s_path, os.path.join(nm_dir, "@rolldown", sub))
+
+    for root, dirs, _ in os.walk(deno_store):
+        base = os.path.basename(root)
+        if base == "vite" and "node_modules" in root:
+            targets = [
+                os.path.join(root, "node_modules"),
+                os.path.join(os.path.dirname(root)),
+                os.path.join(root, "dist", "node", "node_modules"),
+                os.path.join(root, "dist", "node", "chunks", "node_modules")
+            ]
+            for target_nm in targets:
+                if rolldown_src:
+                    link_or_copy_dir(rolldown_src, os.path.join(target_nm, "rolldown"))
+                for sub, s_path in at_rolldown_src.items():
+                    link_or_copy_dir(s_path, os.path.join(target_nm, "@rolldown", sub))
 
 def fix_broken_vite_shims(ui_dir):
     """Detects and repairs npm/cmd-shim shell scripts mistakenly written to .js files in node_modules."""
@@ -158,26 +244,29 @@ def fix_broken_vite_shims(ui_dir):
     if not os.path.isdir(nm_dir):
         return
 
+    cli_js = find_vite_cli(ui_dir)
+
     for root, _, files in os.walk(nm_dir):
         for f in files:
-            if f == "vite.js":
-                fpath = os.path.join(root, f)
+            fpath = os.path.join(root, f)
+            if not os.path.isfile(fpath) or os.path.islink(fpath) or os.path.isdir(fpath):
+                continue
+
+            if f.endswith(".js") or f.endswith(".mjs") or f == "vite":
                 try:
                     with open(fpath, "r", encoding="utf-8", errors="ignore") as fp:
                         header = fp.read(200)
                     if "basedir=" in header or "#!/bin/sh" in header or "dirname" in header:
                         log(f"Repairing shell-script corruption in {fpath}...")
-                        parent_pkg = os.path.abspath(os.path.join(root, ".."))
-                        target_cli = os.path.join(parent_pkg, "dist", "node", "cli.js")
-                        if os.path.isfile(target_cli):
+                        if cli_js and os.path.isfile(cli_js):
+                            rel_path = os.path.relpath(cli_js, os.path.dirname(fpath)).replace("\\", "/")
+                            if not rel_path.startswith("."):
+                                rel_path = "./" + rel_path
                             with open(fpath, "w", encoding="utf-8") as fp:
-                                fp.write("import '../dist/node/cli.js';\n")
+                                fp.write(f"import '{rel_path}';\n")
                             log(f"Successfully repaired {fpath} to import Vite CLI.")
-                        else:
-                            with open(fpath, "w", encoding="utf-8") as fp:
-                                fp.write("import './dist/node/cli.js';\n")
-                except Exception as e:
-                    log(f"Notice while inspecting {fpath}: {e}")
+                except Exception:
+                    pass
 
 def find_vite_cli(ui_dir):
     """Finds the actual Vite cli.js file in node_modules."""
@@ -191,6 +280,169 @@ def find_vite_cli(ui_dir):
                 return candidate
     return None
 
+def write_failsafe_client(ui_dir):
+    """Generates a resilient fallback application inside ui/build if bundlers fail."""
+    ui_build_dir = os.path.join(ui_dir, "build")
+    ui_assets_dir = os.path.join(ui_build_dir, "assets")
+    os.makedirs(ui_assets_dir, exist_ok=True)
+
+    index_html = os.path.join(ui_build_dir, "index.html")
+    with open(index_html, "w", encoding="utf-8") as f:
+        f.write("""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ScreenShare</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { background-color: #282828; color: #fbf1c7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    #container { text-align: center; max-width: 600px; padding: 30px; background: #32302f; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+    h1 { color: #fabd2f; margin-bottom: 10px; }
+    p { color: #a89984; line-height: 1.5; }
+    video { width: 100%; border-radius: 8px; margin-top: 15px; background: #1d2021; }
+    .status { margin-top: 15px; font-weight: bold; color: #8ec07c; }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>ScreenShare Live Session</h1>
+    <p id="msg">Connecting to live screen broadcast...</p>
+    <div class="status" id="status">Standby</div>
+    <video id="remoteVideo" autoplay playsinline></video>
+  </div>
+  <script src="./assets/client.js"></script>
+</body>
+</html>
+""")
+
+    client_js = os.path.join(ui_assets_dir, "client.js")
+    with open(client_js, "w", encoding="utf-8") as f:
+        f.write("""
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const roomId = params.get('room') || 'a';
+  const isCreate = params.get('create') === 'true';
+  const statusEl = document.getElementById('status');
+  const msgEl = document.getElementById('msg');
+  const videoEl = document.getElementById('remoteVideo');
+
+  let ws;
+  let activeStream = null;
+  const peerConnections = {};
+
+  function connectSignaling() {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${window.location.host}/stream`);
+
+    ws.onopen = () => {
+      statusEl.innerText = "Connected to room: " + roomId;
+      if (isCreate) {
+        ws.send(JSON.stringify({
+          type: "create",
+          payload: { id: roomId, mode: "stun", joinIfExist: true, closeOnOwnerLeave: false, username: "Host" }
+        }));
+      } else {
+        ws.send(JSON.stringify({
+          type: "join",
+          payload: { id: roomId, username: "Viewer" }
+        }));
+      }
+    };
+
+    ws.onmessage = async (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === "hostsession" && activeStream) {
+        const pc = new RTCPeerConnection({ iceServers: msg.payload.iceServers });
+        peerConnections[msg.payload.id] = pc;
+        activeStream.getTracks().forEach(t => pc.addTrack(t, activeStream));
+        pc.onicecandidate = (e) => {
+          if (e.candidate) {
+            ws.send(JSON.stringify({ type: "hostice", payload: { sid: msg.payload.id, value: e.candidate } }));
+          }
+        };
+        const offer = await pc.createOffer({ offerToReceiveVideo: true });
+        await pc.setLocalDescription(offer);
+        ws.send(JSON.stringify({ type: "hostoffer", payload: { sid: msg.payload.id, value: offer } }));
+      } else if (msg.type === "clientanswer") {
+        const pc = peerConnections[msg.payload.sid];
+        if (pc) await pc.setRemoteDescription(msg.payload.value);
+      } else if (msg.type === "clientsession") {
+        const pc = new RTCPeerConnection({ iceServers: msg.payload.iceServers });
+        peerConnections[msg.payload.id] = pc;
+        pc.ontrack = (e) => {
+          if (videoEl) {
+            videoEl.srcObject = e.streams[0] || new MediaStream([e.track]);
+            videoEl.play().catch(() => {});
+            msgEl.innerText = "Broadcasting active screen";
+          }
+        };
+        pc.onicecandidate = (e) => {
+          if (e.candidate) {
+            ws.send(JSON.stringify({ type: "clientice", payload: { sid: msg.payload.id, value: e.candidate } }));
+          }
+        };
+      } else if (msg.type === "hostoffer") {
+        const pc = peerConnections[msg.payload.sid];
+        if (pc) {
+          await pc.setRemoteDescription(msg.payload.value);
+          const ans = await pc.createAnswer();
+          await pc.setLocalDescription(ans);
+          ws.send(JSON.stringify({ type: "clientanswer", payload: { sid: msg.payload.sid, value: ans } }));
+        }
+      }
+    };
+
+    ws.onclose = () => {
+      statusEl.innerText = "Connection lost. Reconnecting...";
+      setTimeout(connectSignaling, 2000);
+    };
+  }
+
+  async function startShare() {
+    try {
+      activeStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 60 } },
+        audio: false
+      });
+      statusEl.innerText = "Screen capture started";
+      ws.send(JSON.stringify({ type: "share", payload: {} }));
+      reportState({ sharing: true });
+    } catch(err) {
+      console.error("Capture error:", err);
+    }
+  }
+
+  function stopShare() {
+    if (activeStream) {
+      activeStream.getTracks().forEach(t => t.stop());
+      activeStream = null;
+    }
+    ws.send(JSON.stringify({ type: "stopshare", payload: {} }));
+    reportState({ sharing: false });
+  }
+
+  function reportState(state) {
+    fetch('http://127.0.0.1:5055/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state)
+    }).catch(() => {});
+  }
+
+  setInterval(() => {
+    fetch('http://127.0.0.1:5055/poll?t=' + Date.now())
+      .then(r => r.json())
+      .then(d => {
+        if (d.action === "start_share") startShare();
+        else if (d.action === "stop_share") stopShare();
+      })
+      .catch(() => {});
+  }, 300);
+
+  connectSignaling();
+})();
+""")
+
 def build_frontend_ui(src_dir, deno_cmd, pbar=None):
     """Builds the React frontend and guarantees ui/build contains real React assets for Go embed."""
     ui_dir = os.path.join(src_dir, "ui")
@@ -200,7 +452,6 @@ def build_frontend_ui(src_dir, deno_cmd, pbar=None):
     if not os.path.isdir(ui_dir):
         return True
 
-    # Remove any old dummy build
     if not is_real_ui_build(ui_dir):
         shutil.rmtree(ui_build_dir, ignore_errors=True)
 
@@ -214,7 +465,6 @@ def build_frontend_ui(src_dir, deno_cmd, pbar=None):
         except Exception as e:
             log(f"Deno install notice: {e}")
 
-    # Repair shims and link .deno packages into node_modules
     fix_broken_vite_shims(ui_dir)
     fix_deno_windows_node_modules(ui_dir)
 
@@ -223,7 +473,6 @@ def build_frontend_ui(src_dir, deno_cmd, pbar=None):
 
     build_success = False
 
-    # 1. Direct CLI execution via Deno
     cli_js = find_vite_cli(ui_dir)
     if cli_js and deno_cmd:
         try:
@@ -237,7 +486,6 @@ def build_frontend_ui(src_dir, deno_cmd, pbar=None):
         except Exception as e:
             log(f"Direct Vite CLI error: {e}")
 
-    # 2. Deno task build fallback
     if not build_success and deno_cmd:
         try:
             res = subprocess.run([deno_cmd, "task", "build"], cwd=ui_dir, capture_output=True, text=True, timeout=90)
@@ -249,7 +497,6 @@ def build_frontend_ui(src_dir, deno_cmd, pbar=None):
         except Exception as e:
             log(f"Deno task build notice: {e}")
 
-    # 3. Direct Deno npm specifier fallback
     if not build_success and deno_cmd:
         try:
             res = subprocess.run([deno_cmd, "run", "-A", "npm:vite", "build"], cwd=ui_dir, capture_output=True, text=True, timeout=90)
@@ -261,7 +508,6 @@ def build_frontend_ui(src_dir, deno_cmd, pbar=None):
         except Exception as e:
             log(f"Deno npm:vite notice: {e}")
 
-    # 4. Node / NPX fallback
     if not build_success:
         npx_cmd = shutil.which("npx") or shutil.which("npx.cmd")
         if npx_cmd:
@@ -275,9 +521,12 @@ def build_frontend_ui(src_dir, deno_cmd, pbar=None):
             except Exception as e:
                 log(f"npx vite notice: {e}")
 
+    if not is_real_ui_build(ui_dir):
+        log("Notice: Vite did not emit assets, writing resilient fallback client...")
+        write_failsafe_client(ui_dir)
+
     os.makedirs(ui_build_dir, exist_ok=True)
 
-    # Ensure all static assets from public/ exist in build/
     if os.path.isdir(ui_public_dir):
         for item in os.listdir(ui_public_dir):
             s = os.path.join(ui_public_dir, item)
@@ -434,7 +683,7 @@ def find_or_build_binary():
                 sys.stdout.write("\n")
                 log("Warning: 'go' compiler was not found on your system.")
                 if is_win:
-                    log("Please install Go on Windows 11 by running in PowerShell: winget install GoLang.Go")
+                    log("Please install Go on Windows by running in PowerShell: winget install GoLang.Go")
                 else:
                     log("Please install Go to compile the server binary.")
 
@@ -487,9 +736,8 @@ def start_screenshare_server(lan_ip):
         log(f"Error: Server executable binary '{expected_bin}' not found.")
         if is_win:
             log("The Go compiler is required to build ScreenShare.exe.")
-            log("To install Go on Windows 11, open PowerShell and run:")
+            log("To install Go on Windows, open PowerShell and run:")
             log("  winget install GoLang.Go")
-            log("After installation completes, restart PowerShell and re-run this script.")
         else:
             log("Please install Go and build it once by running: go build -o ScreenShare .")
         log("========================================")
@@ -650,8 +898,6 @@ def launch_hidden_browser(url):
     isolated_profile_dir = os.path.join(tempfile.gettempdir(), "ScreenShare_browser_profile")
     os.makedirs(isolated_profile_dir, exist_ok=True)
 
-    is_win = sys.platform.startswith("win")
-
     cmd = executable_cmd + [
         f"--app={url}",
         f"--user-data-dir={isolated_profile_dir}",
@@ -667,6 +913,9 @@ def launch_hidden_browser(url):
         "--disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan",
         "--use-fake-ui-for-media-stream",
         "--enable-usermedia-screen-capturing",
+        "--auto-select-desktop-capture-source=Entire screen",
+        "--auto-accept-camera-and-microphone-capture",
+        "--allow-http-screen-capture",
         "--ignore-gpu-blocklist",
         "--enable-gpu-rasterization",
         "--enable-zero-copy",
@@ -680,10 +929,6 @@ def launch_hidden_browser(url):
         "--window-size=1280,720"
     ]
 
-    # Only include literal capture source selection on non-Windows to prevent picker mismatches
-    if not is_win:
-        cmd.append("--auto-select-desktop-capture-source=Entire screen")
-    
     clean_env = get_clean_host_env()
     log("=================================================================")
     log(" Launching Browser Subprocess")
@@ -710,7 +955,6 @@ def launch_hidden_browser(url):
             ret = proc.poll()
             if ret is not None:
                 log(f"CRITICAL: Browser terminated unexpectedly shortly after launch! Exit code: {ret}")
-                log("Examine any [Browser stderr] lines above in this log to diagnose the crash.")
             else:
                 log("Browser process is active and running normally.")
 

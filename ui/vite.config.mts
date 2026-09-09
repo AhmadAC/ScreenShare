@@ -14,6 +14,12 @@ export default defineConfig({
             },
         },
     },
-    build: {outDir: 'build/'},
+    resolve: {
+        dedupe: ['@mui/utils', '@mui/material', '@emotion/react', '@emotion/styled'],
+    },
+    build: {
+        outDir: 'build/',
+        chunkSizeWarningLimit: 2000,
+    },
     plugins: [react()],
 });

@@ -262,7 +262,12 @@ class OverlayToolbar(QWidget):
 
     def toggle_share(self):
         is_sharing = get_app_state().get("sharing", False)
-        set_pending_action("stop_share" if is_sharing else "start_share")
+        if is_sharing:
+            self.btn_share.setText("Stopping...")
+            set_pending_action("stop_share")
+        else:
+            self.btn_share.setText("Starting...")
+            set_pending_action("start_share")
 
     def trigger_pause(self):
         set_pending_action("toggle_pause")

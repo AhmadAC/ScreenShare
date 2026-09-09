@@ -1,4 +1,3 @@
-// server/ui/src/useRoom.ts
 import {useSnackbar} from 'notistack';
 import React from 'react';
 
@@ -68,7 +67,6 @@ const hostSession = async ({
     };
 
     peer.onconnectionstatechange = (event) => {
-        console.log('host change', event);
         if (
             peer.connectionState === 'closed' ||
             peer.connectionState === 'disconnected' ||
@@ -105,8 +103,6 @@ const hostSession = async ({
             });
 
             const sortedCodecs = [...exactMatch, ...mimeMatch, ...others];
-
-            console.log('Setting codec preferences', sortedCodecs);
             transceiver.setCodecPreferences(sortedCodecs);
         }
     }
@@ -131,7 +127,6 @@ const clientSession = async ({
     onTrack: (s: MediaStream) => void;
     done: () => void;
 }): Promise<RTCPeerConnection> => {
-    console.log('ice', ice);
     const peer = new RTCPeerConnection({...relayConfig, iceServers: ice});
     peer.onicecandidate = (event) => {
         if (!event.candidate) {
@@ -140,7 +135,6 @@ const clientSession = async ({
         send({type: 'clientice', payload: {sid: sid, value: event.candidate}});
     };
     peer.onconnectionstatechange = (event) => {
-        console.log('client change', event);
         if (
             peer.connectionState === 'closed' ||
             peer.connectionState === 'disconnected' ||
@@ -173,13 +167,13 @@ export const useRoom = (config: UIConfig): UseRoom => {
     const host = React.useRef<Record<string, RTCPeerConnection>>({});
     const client = React.useRef<Record<string, RTCPeerConnection>>({});
     const stream = React.useRef<MediaStream>(undefined);
+    const isStartingShare = React.useRef<boolean>(false);
     const pauseDataRef = React.useRef<{
         isPaused?: boolean;
         intervalId?: number;
         frozenStream?: MediaStream;
     }>({});
 
-    // Audio management: Web Audio Mixer nodes
     const audioCtxRef = React.useRef<AudioContext | null>(null);
     const sysGainRef = React.useRef<GainNode | null>(null);
     const micGainRef = React.useRef<GainNode | null>(null);
@@ -232,7 +226,6 @@ export const useRoom = (config: UIConfig): UseRoom => {
                                 return;
                             }
 
-                            // Deliver frozen video frame to new attendees if currently paused
                             const activeStream = new MediaStream();
                             stream.current.getAudioTracks().forEach((t) => activeStream.addTrack(t));
 
@@ -370,14 +363,19 @@ export const useRoom = (config: UIConfig): UseRoom => {
     );
 
     const share = async () => {
+        if (isStartingShare.current || stream.current) {
+            return;
+        }
+        isStartingShare.current = true;
+
         if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
             enqueueSnackbar('Screensharing not supported in this browser.', {variant: 'error', persist: true});
+            isStartingShare.current = false;
             return;
         }
 
         try {
-            // 1. Capture screen video and optional getDisplayMedia system audio
-            let screenStream: MediaStream;
+            let screenStream: MediaStream | null = null;
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
                     video: { frameRate: { ideal: 60, max: 60 } },
@@ -388,136 +386,122 @@ export const useRoom = (config: UIConfig): UseRoom => {
                     } as any,
                 });
             } catch (err) {
-                console.log('getDisplayMedia with audio failed, falling back to video only:', err);
-                screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { frameRate: { ideal: 60, max: 60 } },
-                    audio: false,
-                });
+                try {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { frameRate: { ideal: 60, max: 60 } },
+                        audio: false,
+                    });
+                } catch (err2) {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: true,
+                        audio: false,
+                    });
+                }
+            }
+
+            if (!screenStream) {
+                isStartingShare.current = false;
+                return;
             }
 
             const combinedStream = new MediaStream();
             screenStream.getVideoTracks().forEach((track) => combinedStream.addTrack(track));
 
-            // Set up Web Audio Context Mixer
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-            const audioCtx = new AudioContextClass();
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume().catch(() => {});
-            }
-            audioCtxRef.current = audioCtx;
-            const audioDest = audioCtx.createMediaStreamDestination();
-
-            const sysGain = audioCtx.createGain();
-            sysGain.gain.setValueAtTime(isSoundMutedRef.current ? 0 : 1, audioCtx.currentTime);
-            sysGain.connect(audioDest);
-            sysGainRef.current = sysGain;
-
-            const micGain = audioCtx.createGain();
-            micGain.gain.setValueAtTime(isMicMutedRef.current ? 0 : 1, audioCtx.currentTime);
-            micGain.connect(audioDest);
-            micGainRef.current = micGain;
-
-            // Enumerate audio input devices to distinguish system monitor/loopback devices from real physical microphones
-            let audioDevices: MediaDeviceInfo[] = [];
             try {
-                audioDevices = await navigator.mediaDevices.enumerateDevices();
-                if (audioDevices.some((d) => d.kind === 'audioinput' && !d.label)) {
-                    // Trigger permission probe so device labels become visible and inspectable
+                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+                if (AudioContextClass) {
+                    const audioCtx = new AudioContextClass();
+                    if (audioCtx.state === 'suspended') {
+                        audioCtx.resume().catch(() => {});
+                    }
+                    audioCtxRef.current = audioCtx;
+                    const audioDest = audioCtx.createMediaStreamDestination();
+
+                    const sysGain = audioCtx.createGain();
+                    sysGain.gain.setValueAtTime(isSoundMutedRef.current ? 0 : 1, audioCtx.currentTime);
+                    sysGain.connect(audioDest);
+                    sysGainRef.current = sysGain;
+
+                    const micGain = audioCtx.createGain();
+                    micGain.gain.setValueAtTime(isMicMutedRef.current ? 0 : 1, audioCtx.currentTime);
+                    micGain.connect(audioDest);
+                    micGainRef.current = micGain;
+
+                    let audioDevices: MediaDeviceInfo[] = [];
                     try {
-                        const tempStream = await navigator.mediaDevices.getUserMedia({audio: true});
-                        tempStream.getTracks().forEach((t) => t.stop());
                         audioDevices = await navigator.mediaDevices.enumerateDevices();
-                    } catch (permErr) {
-                        console.log('Permission probe skipped:', permErr);
-                    }
-                }
-            } catch (enumErr) {
-                console.log('Device enumeration failed:', enumErr);
-            }
+                    } catch (_) {}
 
-            const audioInputs = audioDevices.filter((d) => d.kind === 'audioinput');
+                    const isMonitorLabel = (label: string) => {
+                        const l = label.toLowerCase();
+                        return (
+                            l.includes('computer sound') ||
+                            l.includes('computersound') ||
+                            l.includes('monitor of') ||
+                            l.includes('.monitor') ||
+                            l.includes('stereo mix') ||
+                            l.includes('what u hear') ||
+                            l.includes('wave out mix') ||
+                            l.includes('loopback')
+                        );
+                    };
 
-            const isMonitorLabel = (label: string) => {
-                const l = label.toLowerCase();
-                return (
-                    l.includes('computer sound') ||
-                    l.includes('computersound') ||
-                    l.includes('monitor of') ||
-                    l.includes('.monitor') ||
-                    l.includes('stereo mix') ||
-                    l.includes('what u hear') ||
-                    l.includes('wave out mix') ||
-                    l.includes('loopback')
-                );
-            };
-
-            // Connect system audio ONLY to the system audio gain bus
-            const displayAudioTracks = screenStream.getAudioTracks();
-
-            if (displayAudioTracks.length > 0) {
-                sysStreamRef.current = new MediaStream(displayAudioTracks);
-                const sysSource = audioCtx.createMediaStreamSource(sysStreamRef.current);
-                sysSource.connect(sysGain);
-            } else {
-                // If getDisplayMedia provided no audio tracks, look specifically for a virtual/monitor device
-                const monitorDevice = audioInputs.find((d) => isMonitorLabel(d.label));
-                if (monitorDevice) {
-                    try {
-                        const fallbackAudio = await navigator.mediaDevices.getUserMedia({
-                            audio: {
-                                deviceId: { exact: monitorDevice.deviceId },
-                                echoCancellation: false,
-                                noiseSuppression: false,
-                                autoGainControl: false,
-                            } as any,
-                        });
-                        sysStreamRef.current = fallbackAudio;
-                        const sysSource = audioCtx.createMediaStreamSource(fallbackAudio);
+                    const displayAudioTracks = screenStream.getAudioTracks();
+                    if (displayAudioTracks.length > 0) {
+                        sysStreamRef.current = new MediaStream(displayAudioTracks);
+                        const sysSource = audioCtx.createMediaStreamSource(sysStreamRef.current);
                         sysSource.connect(sysGain);
-                    } catch (e) {
-                        console.log('Could not open monitor audio device:', e);
-                    }
-                }
-            }
-
-            // Capture Real Physical Microphone (strictly avoiding monitor devices to prevent bleed into mic channel)
-            const physicalMicDevice = audioInputs.find((d) => !isMonitorLabel(d.label) && d.deviceId);
-            if (physicalMicDevice) {
-                try {
-                    const micStream = await navigator.mediaDevices.getUserMedia({
-                        audio: {
-                            deviceId: { exact: physicalMicDevice.deviceId },
-                            echoCancellation: true,
-                            noiseSuppression: true,
-                            autoGainControl: true,
-                        },
-                    });
-                    const micTracks = micStream.getAudioTracks();
-                    if (micTracks.length > 0) {
-                        if (isMicMutedRef.current) {
-                            micTracks.forEach((t) => (t.enabled = false));
+                    } else {
+                        const monitorDevice = audioDevices.find((d) => d.kind === 'audioinput' && isMonitorLabel(d.label));
+                        if (monitorDevice) {
+                            try {
+                                const fallbackAudio = await navigator.mediaDevices.getUserMedia({
+                                    audio: {
+                                        deviceId: { exact: monitorDevice.deviceId },
+                                        echoCancellation: false,
+                                        noiseSuppression: false,
+                                        autoGainControl: false,
+                                    } as any,
+                                });
+                                sysStreamRef.current = fallbackAudio;
+                                const sysSource = audioCtx.createMediaStreamSource(fallbackAudio);
+                                sysSource.connect(sysGain);
+                            } catch (_) {}
                         }
-                        micStreamRef.current = micStream;
-                        const micSource = audioCtx.createMediaStreamSource(micStream);
-                        micSource.connect(micGain);
                     }
-                } catch (micErr) {
-                    console.log('Real physical microphone capture not available:', micErr);
+
+                    const physicalMicDevice = audioDevices.find(
+                        (d) => d.kind === 'audioinput' && !isMonitorLabel(d.label) && d.deviceId
+                    );
+                    if (physicalMicDevice) {
+                        try {
+                            const micStream = await navigator.mediaDevices.getUserMedia({
+                                audio: {
+                                    deviceId: { exact: physicalMicDevice.deviceId },
+                                    echoCancellation: true,
+                                    noiseSuppression: true,
+                                    autoGainControl: true,
+                                },
+                            });
+                            const micTracks = micStream.getAudioTracks();
+                            if (micTracks.length > 0) {
+                                if (isMicMutedRef.current) {
+                                    micTracks.forEach((t) => (t.enabled = false));
+                                }
+                                micStreamRef.current = micStream;
+                                const micSource = audioCtx.createMediaStreamSource(micStream);
+                                micSource.connect(micGain);
+                            }
+                        } catch (_) {}
+                    }
+
+                    const mixedAudioTracks = audioDest.stream.getAudioTracks();
+                    if (mixedAudioTracks.length > 0) {
+                        combinedStream.addTrack(mixedAudioTracks[0]);
+                    }
                 }
-            }
-
-            // Ensure initial track mute states match refs exactly
-            if (sysStreamRef.current && isSoundMutedRef.current) {
-                sysStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = false));
-            }
-            if (micStreamRef.current && isMicMutedRef.current) {
-                micStreamRef.current.getAudioTracks().forEach((t) => (t.enabled = false));
-            }
-
-            // Attach the mixed audio track to the outgoing stream
-            const mixedAudioTracks = audioDest.stream.getAudioTracks();
-            if (mixedAudioTracks.length > 0) {
-                combinedStream.addTrack(mixedAudioTracks[0]);
+            } catch (audioErr) {
+                console.warn('Audio mixer setup skipped or failed:', audioErr);
             }
 
             stream.current = combinedStream;
@@ -526,7 +510,10 @@ export const useRoom = (config: UIConfig): UseRoom => {
                 variant: 'error',
                 persist: true,
             });
+            isStartingShare.current = false;
             return;
+        } finally {
+            isStartingShare.current = false;
         }
 
         stream.current?.getVideoTracks()[0].addEventListener('ended', () => stopShare());
@@ -538,7 +525,9 @@ export const useRoom = (config: UIConfig): UseRoom => {
             soundMuted: isSoundMutedRef.current,
         } : current));
 
-        conn.current?.send(JSON.stringify({type: 'share', payload: {}}));
+        if (conn.current && conn.current.readyState === WebSocket.OPEN) {
+            conn.current.send(JSON.stringify({type: 'share', payload: {}}));
+        }
     };
 
     const stopShare = async () => {
@@ -568,7 +557,11 @@ export const useRoom = (config: UIConfig): UseRoom => {
         host.current = {};
         stream.current?.getTracks().forEach((track) => track.stop());
         stream.current = undefined;
-        conn.current?.send(JSON.stringify({type: 'stopshare', payload: {}}));
+
+        if (conn.current && conn.current.readyState === WebSocket.OPEN) {
+            conn.current.send(JSON.stringify({type: 'stopshare', payload: {}}));
+        }
+
         setState((current) => (current ? {
             ...current,
             hostStream: undefined,
@@ -726,7 +719,6 @@ export const useRoom = (config: UIConfig): UseRoom => {
                 room({type: 'join', payload: {id: roomID}});
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return {state, room, share, stopShare, setName, togglePause, toggleMic, toggleSystemAudio};

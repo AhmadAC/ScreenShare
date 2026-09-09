@@ -5,7 +5,6 @@ import shutil
 import datetime
 import subprocess
 
-# AppImage sets $OWD to the directory where the user launched the application
 EXECUTION_DIR = os.environ.get("OWD", os.getcwd())
 LOG_FILE_PATH = os.path.join(EXECUTION_DIR, "ScreenShare-host.log")
 LINK_FILE_PATH = os.path.join(EXECUTION_DIR, "link.txt")
@@ -127,12 +126,34 @@ def detect_lan_ip():
     return "127.0.0.1"
 
 def kill_port_owners():
-    """Terminates any stale processes using ScreenShare/Control ports on Linux."""
-    if not sys.platform.startswith("linux"):
+    """Terminates any stale processes using ScreenShare/Control ports on Linux and Windows."""
+    ports = [5050, 5055, 3478]
+    if sys.platform.startswith("win"):
+        current_pid = os.getpid()
+        for port in ports:
+            try:
+                res = subprocess.run(
+                    ["netstat", "-ano", "-p", "tcp"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True
+                )
+                for line in res.stdout.splitlines():
+                    if f":{port} " in line and "LISTENING" in line:
+                        parts = line.strip().split()
+                        pid_str = parts[-1]
+                        if pid_str.isdigit():
+                            target_pid = int(pid_str)
+                            if target_pid != current_pid and target_pid != 0:
+                                subprocess.run(["taskkill", "/F", "/PID", str(target_pid)],
+                                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
         return
+
     clean_env = get_clean_host_env()
-    ports = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
-    for port in ports:
+    ports_str = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
+    for port in ports_str:
         subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
 
 def run_audio_cmd(args):

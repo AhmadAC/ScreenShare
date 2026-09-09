@@ -819,3 +819,118 @@ basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
 [2026-09-09 14:26:08] Browser process is active and running normally.
 [2026-09-09 14:26:17] Application shutdown initiated. Cleaning up subprocesses...
 [2026-09-09 14:26:17] Cleanup finished. ScreenShare Host terminated.
+[2026-09-09 14:33:40] =================================================================
+[2026-09-09 14:33:40]  ScreenShare Host Starting
+[2026-09-09 14:33:40]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 14:33:40]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 14:33:40]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 14:33:40]  Frozen bundle status  : False
+[2026-09-09 14:33:40] =================================================================
+[2026-09-09 14:33:41]  Detected Local IP     : 172.31.54.46
+[2026-09-09 14:33:41]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 14:33:41] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 14:33:41] ========================================
+[2026-09-09 14:33:41] Source files modified or binary missing. Starting compilation...
+[2026-09-09 14:33:41] ========================================
+[2026-09-09 14:33:41] Building React frontend...
+[2026-09-09 14:33:41] Notice while inspecting e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite: [Errno 13] Permission denied: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\vite'
+[2026-09-09 14:33:41] Repairing shell-script corruption in e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.bin\vite...
+[2026-09-09 14:33:41] Successfully repaired e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.bin\vite to import Vite CLI.
+[2026-09-09 14:33:42] Notice while inspecting e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.deno\@vitejs+plugin-react@6.0.1\node_modules\vite: [Errno 13] Permission denied: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\.deno\\@vitejs+plugin-react@6.0.1\\node_modules\\vite'
+[2026-09-09 14:33:43] Notice while inspecting e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.deno\vite-plugin-svgr@5.2.0\node_modules\vite: [Errno 13] Permission denied: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\.deno\\vite-plugin-svgr@5.2.0\\node_modules\\vite'
+[2026-09-09 14:33:43] Notice while inspecting e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.deno\vite-tsconfig-paths@6.1.1\node_modules\vite: [Errno 13] Permission denied: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\.deno\\vite-tsconfig-paths@6.1.1\\node_modules\\vite'
+[2026-09-09 14:33:43] Resolving Windows package links from Deno store...
+[2026-09-09 14:33:45] Invoking Vite CLI directly: e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.deno\vite@8.0.10\node_modules\vite\dist\node\cli.js
+[2026-09-09 14:34:05] Direct Vite CLI notice: [33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[31mâœ—[39m Build failed in 9.71s
+[31merror during build:
+[31mBuild failed with 1 error:
+
+Error: [vite]: Rolldown failed to resolve import "@mui/utils/getActiveElement" from "e:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/@mui+material@9.0.0/node_modules/@mui/material/utils/getActiveElement.mjs".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteLog (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js:33111:57)
+    at file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js:33147:71
+    at onwarn (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/@vitejs+plugin-react@6.0.1/node_modules/@vitejs/plugin-react/dist/index.js:40:7)
+    at file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js:33147:28
+    at onRollupLog (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js:33142:63)
+    at onLog (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js:32911:4)
+    at file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/rolldown@1.0.0-rc.17/node_modules/rolldown/dist/shared/rolldown-build-DSxL8qiP.mjs:50:26
+    at logger (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/rolldown@1.0.0-rc.17/node_modules/rolldown/dist/shared/rolldown-build-DSxL8qiP.mjs:41:3)
+    at onLog (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/rolldown@1.0.0-rc.17/node_modules/rolldown/dist/shared/bindingify-input-options-DbbBhzky.mjs:1991:32)[31m
+    at aggregateBindingErrorsIntoJsError (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/rolldown@1.0.0-rc.17/node_modules/rolldown/dist/shared/error-DL-e8-oE.mjs:48:18)
+    at unwrapBindingResult (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/rolldown@1.0.0-rc.17/node_modules/rolldown/dist/shared/error-DL-e8-oE.mjs:18:128)
+    at RolldownBuild.#build (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/rolldown@1.0.0-rc.17/node_modules/rolldown/dist/shared/rolldown-build-DSxL8qiP.mjs:3317:34)
+    at async buildEnvironment (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js:33018:64)
+    at async Object.build (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js:33440:19)
+    at async Object.buildApp (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js:33437:153)
+    at async CAC.<anonymous> (file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/cli.js:778:3) {
+  errors: [Getter/Setter]
+}[39m
+
+[2026-09-09 14:34:09] Deno task build notice: [0m[32mTask[0m [0m[36mbuild[0m vite build
+[0m[1m[31merror[0m: [ERR_MODULE_NOT_FOUND] Cannot find module 'file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/bin/dist/node/cli.js' imported from 'file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/bin/vite.js'
+
+[2026-09-09 14:34:12] Deno npm:vite notice: [0m[1m[31merror[0m: [ERR_MODULE_NOT_FOUND] Cannot find module 'file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/bin/dist/node/cli.js' imported from 'file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/bin/vite.js'
+
+[2026-09-09 14:34:12] Compiling Go binary using: C:\Program Files\Go\bin\go.exe ...
+[2026-09-09 14:34:22] Server binary compilation successful.
+[2026-09-09 14:34:22] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 14:34:22] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 14:34:22] [Server stdout] [90m2026-09-09T14:34:22+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 14:34:22] [Server stdout] [90m2026-09-09T14:34:22+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 14:34:22] [Server stdout] [90m2026-09-09T14:34:22+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 14:34:22] [Server stdout] [90m2026-09-09T14:34:22+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 14:34:22] [Server stdout] [90m2026-09-09T14:34:22+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 14:34:22] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 14:34:22] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 14:34:22] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 14:34:22] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 14:34:22] =================================================================
+[2026-09-09 14:34:22]  Launching Browser Subprocess
+[2026-09-09 14:34:22]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --test-type --no-sandbox --disable-dev-shm-usage --disable-vulkan --disable-application-cache --disk-cache-size=1 --media-cache-size=1 --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan --use-fake-ui-for-media-stream --enable-usermedia-screen-capturing --auto-select-desktop-capture-source=Entire screen --auto-accept-camera-and-microphone-capture --allow-http-screen-capture --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 14:34:22]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 14:34:22]  DISPLAY         : <none>
+[2026-09-09 14:34:22]  WAYLAND_DISPLAY : <none>
+[2026-09-09 14:34:22]  XDG_DATA_DIRS   : <none>
+[2026-09-09 14:34:22] =================================================================
+[2026-09-09 14:34:26] Browser process is active and running normally.
+[2026-09-09 14:34:38] Application shutdown initiated. Cleaning up subprocesses...
+[2026-09-09 14:34:38] Cleanup finished. ScreenShare Host terminated.
+[2026-09-09 14:36:43] =================================================================
+[2026-09-09 14:36:43]  ScreenShare Host Starting
+[2026-09-09 14:36:43]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 14:36:43]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 14:36:43]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 14:36:43]  Frozen bundle status  : False
+[2026-09-09 14:36:43] =================================================================
+[2026-09-09 14:36:44]  Detected Local IP     : 172.31.54.46
+[2026-09-09 14:36:44]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 14:36:44] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 14:36:44] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 14:36:44] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 14:36:44] [Server stdout] [90m2026-09-09T14:36:44+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 14:36:44] [Server stdout] [90m2026-09-09T14:36:44+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 14:36:44] [Server stdout] [90m2026-09-09T14:36:44+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 14:36:44] [Server stdout] [90m2026-09-09T14:36:44+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 14:36:44] [Server stdout] [90m2026-09-09T14:36:44+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 14:36:45] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 14:36:45] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 14:36:45] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 14:36:45] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 14:36:45] =================================================================
+[2026-09-09 14:36:45]  Launching Browser Subprocess
+[2026-09-09 14:36:45]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --test-type --no-sandbox --disable-dev-shm-usage --disable-vulkan --disable-application-cache --disk-cache-size=1 --media-cache-size=1 --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan --use-fake-ui-for-media-stream --enable-usermedia-screen-capturing --auto-select-desktop-capture-source=Entire screen --auto-accept-camera-and-microphone-capture --allow-http-screen-capture --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 14:36:45]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 14:36:45]  DISPLAY         : <none>
+[2026-09-09 14:36:45]  WAYLAND_DISPLAY : <none>
+[2026-09-09 14:36:45]  XDG_DATA_DIRS   : <none>
+[2026-09-09 14:36:45] =================================================================
+[2026-09-09 14:36:49] CRITICAL: Browser terminated unexpectedly shortly after launch! Exit code: 2147483651
+[2026-09-09 14:37:19] Application shutdown initiated. Cleaning up subprocesses...
+[2026-09-09 14:37:19] Cleanup finished. ScreenShare Host terminated.

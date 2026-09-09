@@ -44,23 +44,33 @@ class BridgeHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, *')
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
         self.end_headers()
 
     def do_GET(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Content-Type', 'application/json')
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
         self.end_headers()
 
-        if self.path == '/poll':
+        clean_path = self.path.split('?')[0].rstrip('/')
+        if clean_path in ('/poll', 'poll'):
             action = get_pending_action()
             if action:
-                self.wfile.write(json.dumps({"action": action}).encode())
+                self.wfile.write(json.dumps({"action": action}).encode('utf-8'))
             else:
                 self.wfile.write(b'{"action": "none"}')
+        elif clean_path in ('/state', 'state'):
+            self.wfile.write(json.dumps(get_app_state()).encode('utf-8'))
+        else:
+            self.wfile.write(b'{"status": "ok"}')
 
     def do_POST(self):
-        if self.path == '/state':
+        clean_path = self.path.split('?')[0].rstrip('/')
+        if clean_path in ('/state', 'state'):
             content_length = int(self.headers.get('Content-Length', 0))
             if content_length > 0:
                 post_data = self.rfile.read(content_length)
@@ -74,11 +84,17 @@ class BridgeHandler(BaseHTTPRequestHandler):
                     pass
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
             self.end_headers()
             self.wfile.write(b'{"status": "ok"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
 
 class ThreadingHTTPServer(ThreadingTCPServer, HTTPServer):
-    pass
+    daemon_threads = True
+    allow_reuse_address = True
 
 def run_http_server(port=PORT):
     server = ThreadingHTTPServer(('127.0.0.1', port), BridgeHandler)
