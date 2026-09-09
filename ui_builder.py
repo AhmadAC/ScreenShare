@@ -6,7 +6,7 @@ import subprocess
 from system_util import log
 
 def is_real_ui_build(ui_dir):
-    """Verifies that ui/build contains actual compiled React assets."""
+    """Verifies that ui/build contains compiled assets and valid index.html."""
     build_dir = os.path.join(ui_dir, "build")
     index_file = os.path.join(build_dir, "index.html")
     assets_dir = os.path.join(build_dir, "assets")
@@ -209,7 +209,7 @@ def fix_broken_vite_shims(ui_dir):
             pass
 
 def write_failsafe_client(ui_dir):
-    """Generates a resilient fallback application inside ui/build with full WebRTC signaling and ICE candidate support."""
+    """Generates a resilient fallback application inside ui/build with complete WebRTC signaling and candidate exchange."""
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_assets_dir = os.path.join(ui_build_dir, "assets")
     os.makedirs(ui_assets_dir, exist_ok=True)
@@ -236,9 +236,9 @@ def write_failsafe_client(ui_dir):
     }
     #header {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
+      top: 12px;
+      left: 12px;
+      right: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -281,7 +281,7 @@ def write_failsafe_client(ui_dir):
       transform: translate(-50%, -50%);
       text-align: center;
       z-index: 10;
-      background: rgba(40, 40, 40, 0.9);
+      background: rgba(40, 40, 40, 0.95);
       padding: 24px 32px;
       border-radius: 16px;
       border: 1px solid #fabd2f;
@@ -296,6 +296,22 @@ def write_failsafe_client(ui_dir):
     #overlayMessage p {
       color: #a89984;
       font-size: 14px;
+      margin-bottom: 12px;
+    }
+    #btnStartCapture {
+      display: none;
+      background: #fabd2f;
+      color: #282828;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 0 auto;
+    }
+    #btnStartCapture:hover {
+      background: #d79921;
     }
     #controls {
       position: absolute;
@@ -331,13 +347,6 @@ def write_failsafe_client(ui_dir):
     button:active {
       background: #665c54;
     }
-    .btn-primary {
-      background: #fabd2f;
-      color: #282828;
-    }
-    .btn-primary:hover {
-      background: #d79921;
-    }
   </style>
 </head>
 <body>
@@ -348,8 +357,9 @@ def write_failsafe_client(ui_dir):
 
   <div id="videoContainer">
     <div id="overlayMessage">
-      <h2>ScreenShare Stream</h2>
-      <p id="msgDetail">Waiting for screen broadcaster to start transmission...</p>
+      <h2 id="msgTitle">ScreenShare Stream</h2>
+      <p id="msgDetail">Waiting for screen transmission to start...</p>
+      <button id="btnStartCapture">🔴 Click to Start Broadcasting</button>
     </div>
     <video id="remoteVideo" autoplay playsinline></video>
   </div>
@@ -372,8 +382,10 @@ def write_failsafe_client(ui_dir):
 
   const statusEl = document.getElementById('status');
   const roomLabel = document.getElementById('roomLabel');
+  const msgTitle = document.getElementById('msgTitle');
   const msgDetail = document.getElementById('msgDetail');
   const overlayMessage = document.getElementById('overlayMessage');
+  const btnStartCapture = document.getElementById('btnStartCapture');
   const videoEl = document.getElementById('remoteVideo');
   const btnUnmute = document.getElementById('btnUnmute');
   const btnFullscreen = document.getElementById('btnFullscreen');
@@ -402,6 +414,10 @@ def write_failsafe_client(ui_dir):
     videoEl.muted = false;
     videoEl.play().catch(() => {});
     btnUnmute.style.display = 'none';
+  });
+
+  btnStartCapture.addEventListener('click', () => {
+    startShare();
   });
 
   function getCleanIceServers(iceServers) {
@@ -433,10 +449,13 @@ def write_failsafe_client(ui_dir):
             username: "Host"
           }
         }));
-        // Auto-initiate display capture on Host side
-        setTimeout(() => {
-          if (!activeStream) startShare();
-        }, 300);
+
+        msgTitle.innerText = "Host Broadcaster Mode";
+        msgDetail.innerText = "Click below to select and broadcast your screen to viewers:";
+        btnStartCapture.style.display = "block";
+
+        // Attempt automated capture trigger
+        startShare();
       } else {
         ws.send(JSON.stringify({
           type: "join",
@@ -516,7 +535,6 @@ def write_failsafe_client(ui_dir):
           if (pc) {
             await pc.setRemoteDescription(new RTCSessionDescription(msg.payload.value));
             
-            // Process any early buffered host ICE candidates
             if (pendingIceCandidates[sid]) {
               for (const cand of pendingIceCandidates[sid]) {
                 await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
@@ -538,7 +556,6 @@ def write_failsafe_client(ui_dir):
           if (pc) {
             await pc.setRemoteDescription(new RTCSessionDescription(msg.payload.value));
             
-            // Process any early buffered client ICE candidates
             if (pendingIceCandidates[sid]) {
               for (const cand of pendingIceCandidates[sid]) {
                 await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
@@ -581,6 +598,7 @@ def write_failsafe_client(ui_dir):
           }
           if (Object.keys(peerConnections).length === 0 && !isCreate) {
             overlayMessage.style.display = 'block';
+            msgTitle.innerText = "Stream Ended";
             msgDetail.innerText = "Screen broadcast ended by host.";
             statusEl.innerText = "Stream Ended";
           }
@@ -604,12 +622,14 @@ def write_failsafe_client(ui_dir):
         audio: false
       });
       statusEl.innerText = "Broadcasting Active";
+      overlayMessage.style.display = "none";
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "share", payload: {} }));
       }
       reportState({ sharing: true });
       activeStream.getVideoTracks()[0].addEventListener('ended', () => stopShare());
     } catch (err) {
+      console.warn("Screen capture start notice:", err);
       reportState({ sharing: false });
     }
   }
@@ -621,6 +641,12 @@ def write_failsafe_client(ui_dir):
     }
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "stopshare", payload: {} }));
+    }
+    if (isCreate) {
+      overlayMessage.style.display = "block";
+      msgTitle.innerText = "Host Broadcaster Mode";
+      msgDetail.innerText = "Screen sharing is stopped. Click below to start broadcasting:";
+      btnStartCapture.style.display = "block";
     }
     reportState({ sharing: false });
   }
@@ -649,7 +675,7 @@ def write_failsafe_client(ui_dir):
 })();''')
 
 def build_frontend_ui(src_dir, deno_cmd, pbar=None):
-    """Builds the React frontend and guarantees ui/build contains real React assets for Go embed."""
+    """Builds the React frontend and guarantees ui/build contains real assets for Go embed."""
     ui_dir = os.path.join(src_dir, "ui")
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_public_dir = os.path.join(ui_dir, "public")

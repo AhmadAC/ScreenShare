@@ -8,15 +8,28 @@ from progress_bar import ConsoleProgressBar
 from ui_builder import is_real_ui_build, safely_remove_target, build_frontend_ui
 
 def needs_rebuild(src_dir, out_bin):
-    """Checks if server binary or real React production assets are missing or out of date."""
+    """Checks if server binary or frontend assets are missing, outdated, or modified."""
     if not os.path.isfile(out_bin):
         return True
     
+    bin_mtime = os.path.getmtime(out_bin)
+
+    # Rebuild if builder scripts themselves were modified
+    for check_file in ["ui_builder.py", "go_builder.py", "process_util.py", "server_builder.py"]:
+        p = os.path.join(src_dir, check_file)
+        if os.path.isfile(p) and os.path.getmtime(p) > bin_mtime:
+            return True
+
     ui_dir = os.path.join(src_dir, "ui")
     if not is_real_ui_build(ui_dir):
         return True
 
-    bin_mtime = os.path.getmtime(out_bin)
+    ui_build_assets = os.path.join(ui_dir, "build", "assets")
+    if os.path.isdir(ui_build_assets):
+        for f in os.listdir(ui_build_assets):
+            if os.path.getmtime(os.path.join(ui_build_assets, f)) > bin_mtime:
+                return True
+
     ui_src = os.path.join(ui_dir, "src")
     if os.path.isdir(ui_src):
         for root, _, files in os.walk(ui_src):
