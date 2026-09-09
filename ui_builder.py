@@ -209,7 +209,7 @@ def fix_broken_vite_shims(ui_dir):
             pass
 
 def write_failsafe_client(ui_dir):
-    """Generates a resilient fallback application inside ui/build with complete WebRTC signaling and candidate exchange."""
+    """Generates a resilient fallback application inside ui/build with full WebRTC audio/video signaling and candidate exchange."""
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_assets_dir = os.path.join(ui_build_dir, "assets")
     os.makedirs(ui_assets_dir, exist_ok=True)
@@ -267,6 +267,7 @@ def write_failsafe_client(ui_dir):
       align-items: center;
       justify-content: center;
       background: #000;
+      cursor: pointer;
     }
     video {
       width: 100%;
@@ -313,6 +314,30 @@ def write_failsafe_client(ui_dir):
     #btnStartCapture:hover {
       background: #d79921;
     }
+    #audioBanner {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      background: #fabd2f;
+      color: #282828;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-size: 13px;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      display: none;
+      cursor: pointer;
+      align-items: center;
+      gap: 8px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.04); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
     #controls {
       position: absolute;
       bottom: 20px;
@@ -355,6 +380,10 @@ def write_failsafe_client(ui_dir):
     <div class="badge" id="status">Connecting...</div>
   </div>
 
+  <div id="audioBanner">
+    🔊 Tap anywhere to enable live audio
+  </div>
+
   <div id="videoContainer">
     <div id="overlayMessage">
       <h2 id="msgTitle">ScreenShare Stream</h2>
@@ -365,7 +394,7 @@ def write_failsafe_client(ui_dir):
   </div>
 
   <div id="controls">
-    <button id="btnUnmute" style="display: none;">🔊 Unmute Audio</button>
+    <button id="btnToggleAudio">🔇 Audio: Off</button>
     <button id="btnFullscreen">⛶ Fullscreen</button>
   </div>
 
@@ -387,17 +416,21 @@ def write_failsafe_client(ui_dir):
   const overlayMessage = document.getElementById('overlayMessage');
   const btnStartCapture = document.getElementById('btnStartCapture');
   const videoEl = document.getElementById('remoteVideo');
-  const btnUnmute = document.getElementById('btnUnmute');
+  const audioBanner = document.getElementById('audioBanner');
+  const btnToggleAudio = document.getElementById('btnToggleAudio');
   const btnFullscreen = document.getElementById('btnFullscreen');
+  const videoContainer = document.getElementById('videoContainer');
 
   roomLabel.innerText = roomId;
 
   let ws = null;
   let activeStream = null;
+  let hasAudioTrack = false;
   const peerConnections = {};
   const pendingIceCandidates = {};
 
-  btnFullscreen.addEventListener('click', () => {
+  btnFullscreen.addEventListener('click', (e) => {
+    e.stopPropagation();
     if (!document.fullscreenElement) {
       if (videoEl.requestFullscreen) videoEl.requestFullscreen();
       else if (videoEl.webkitRequestFullscreen) videoEl.webkitRequestFullscreen();
@@ -410,10 +443,40 @@ def write_failsafe_client(ui_dir):
     }
   });
 
-  btnUnmute.addEventListener('click', () => {
+  function unmutePlayback() {
     videoEl.muted = false;
-    videoEl.play().catch(() => {});
-    btnUnmute.style.display = 'none';
+    videoEl.volume = 1.0;
+    videoEl.play().then(() => {
+      audioBanner.style.display = 'none';
+      btnToggleAudio.innerText = "🔊 Audio: On";
+      btnToggleAudio.style.background = "#fabd2f";
+      btnToggleAudio.style.color = "#282828";
+      statusEl.innerText = "Live Broadcast (Audio On)";
+    }).catch(() => {
+      videoEl.muted = true;
+      videoEl.play().catch(() => {});
+    });
+  }
+
+  function toggleAudio(e) {
+    if (e) e.stopPropagation();
+    if (videoEl.muted) {
+      unmutePlayback();
+    } else {
+      videoEl.muted = true;
+      btnToggleAudio.innerText = "🔇 Audio: Off";
+      btnToggleAudio.style.background = "#3c3836";
+      btnToggleAudio.style.color = "#fbf1c7";
+      statusEl.innerText = "Live Broadcast (Audio Muted)";
+    }
+  }
+
+  btnToggleAudio.addEventListener('click', toggleAudio);
+  audioBanner.addEventListener('click', unmutePlayback);
+  videoContainer.addEventListener('click', () => {
+    if (hasAudioTrack && videoEl.muted) {
+      unmutePlayback();
+    }
   });
 
   btnStartCapture.addEventListener('click', () => {
@@ -451,10 +514,10 @@ def write_failsafe_client(ui_dir):
         }));
 
         msgTitle.innerText = "Host Broadcaster Mode";
-        msgDetail.innerText = "Click below to select and broadcast your screen to viewers:";
+        msgDetail.innerText = "Click below to select and broadcast your screen and system sound:";
         btnStartCapture.style.display = "block";
 
-        // Attempt automated capture trigger
+        // Automatically request capture
         startShare();
       } else {
         ws.send(JSON.stringify({
@@ -507,15 +570,31 @@ def write_failsafe_client(ui_dir):
             if (videoEl) {
               const stream = e.streams[0] || new MediaStream([e.track]);
               videoEl.srcObject = stream;
+              hasAudioTrack = stream.getAudioTracks().length > 0;
+
+              // Attempt unmuted playback first
+              videoEl.muted = false;
               videoEl.play().then(() => {
                 overlayMessage.style.display = 'none';
                 statusEl.innerText = "Live Broadcast";
+                if (hasAudioTrack) {
+                  btnToggleAudio.innerText = "🔊 Audio: On";
+                  btnToggleAudio.style.background = "#fabd2f";
+                  btnToggleAudio.style.color = "#282828";
+                  audioBanner.style.display = 'none';
+                }
               }).catch(() => {
+                // If browser autoplay policy blocks unmuted audio, fallback to muted + user interaction prompt
                 videoEl.muted = true;
                 videoEl.play().catch(() => {});
-                btnUnmute.style.display = 'block';
                 overlayMessage.style.display = 'none';
-                statusEl.innerText = "Live Broadcast (Muted)";
+                if (hasAudioTrack) {
+                  audioBanner.style.display = 'flex';
+                  btnToggleAudio.innerText = "🔇 Audio: Off (Tap to unmute)";
+                  statusEl.innerText = "Live Broadcast (Audio Ready)";
+                } else {
+                  statusEl.innerText = "Live Broadcast";
+                }
               });
             }
           };
@@ -601,6 +680,7 @@ def write_failsafe_client(ui_dir):
             msgTitle.innerText = "Stream Ended";
             msgDetail.innerText = "Screen broadcast ended by host.";
             statusEl.innerText = "Stream Ended";
+            audioBanner.style.display = 'none';
           }
         }
       } catch (err) {
@@ -617,10 +697,32 @@ def write_failsafe_client(ui_dir):
 
   async function startShare() {
     try {
-      activeStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 60, max: 60 } },
-        audio: false
-      });
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: { ideal: 60, max: 60 } },
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+            suppressLocalAudioPlayback: false
+          }
+        });
+      } catch (e1) {
+        try {
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video: { frameRate: { ideal: 60, max: 60 } },
+            audio: true
+          });
+        } catch (e2) {
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: false
+          });
+        }
+      }
+
+      activeStream = stream;
       statusEl.innerText = "Broadcasting Active";
       overlayMessage.style.display = "none";
       if (ws && ws.readyState === WebSocket.OPEN) {
