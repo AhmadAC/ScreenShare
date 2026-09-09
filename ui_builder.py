@@ -209,7 +209,7 @@ def fix_broken_vite_shims(ui_dir):
             pass
 
 def write_failsafe_client(ui_dir):
-    """Generates a resilient fallback application inside ui/build with full WebRTC audio/video signaling and candidate exchange."""
+    """Generates a resilient fallback application inside ui/build with full WebRTC audio/video broadcasting and candidate exchange."""
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_assets_dir = os.path.join(ui_build_dir, "assets")
     os.makedirs(ui_assets_dir, exist_ok=True)
@@ -381,7 +381,7 @@ def write_failsafe_client(ui_dir):
   </div>
 
   <div id="audioBanner">
-    🔊 Tap anywhere to enable live audio
+    🔊 Tap anywhere on screen to enable live audio
   </div>
 
   <div id="videoContainer">
@@ -394,7 +394,7 @@ def write_failsafe_client(ui_dir):
   </div>
 
   <div id="controls">
-    <button id="btnToggleAudio">🔇 Audio: Off</button>
+    <button id="btnToggleAudio">🔊 Audio: Off</button>
     <button id="btnFullscreen">⛶ Fullscreen</button>
   </div>
 
@@ -425,9 +425,12 @@ def write_failsafe_client(ui_dir):
 
   let ws = null;
   let activeStream = null;
+  let remoteStream = new MediaStream();
   let hasAudioTrack = false;
   const peerConnections = {};
   const pendingIceCandidates = {};
+
+  videoEl.srcObject = remoteStream;
 
   btnFullscreen.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -451,7 +454,7 @@ def write_failsafe_client(ui_dir):
       btnToggleAudio.innerText = "🔊 Audio: On";
       btnToggleAudio.style.background = "#fabd2f";
       btnToggleAudio.style.color = "#282828";
-      statusEl.innerText = "Live Broadcast (Audio On)";
+      statusEl.innerText = "Live Broadcast (Audio Playing)";
     }).catch(() => {
       videoEl.muted = true;
       videoEl.play().catch(() => {});
@@ -464,7 +467,7 @@ def write_failsafe_client(ui_dir):
       unmutePlayback();
     } else {
       videoEl.muted = true;
-      btnToggleAudio.innerText = "🔇 Audio: Off";
+      btnToggleAudio.innerText = "🔇 Audio: Muted";
       btnToggleAudio.style.background = "#3c3836";
       btnToggleAudio.style.color = "#fbf1c7";
       statusEl.innerText = "Live Broadcast (Audio Muted)";
@@ -514,10 +517,9 @@ def write_failsafe_client(ui_dir):
         }));
 
         msgTitle.innerText = "Host Broadcaster Mode";
-        msgDetail.innerText = "Click below to select and broadcast your screen and system sound:";
+        msgDetail.innerText = "Click below to select and broadcast your screen with system sound:";
         btnStartCapture.style.display = "block";
 
-        // Automatically request capture
         startShare();
       } else {
         ws.send(JSON.stringify({
@@ -567,36 +569,41 @@ def write_failsafe_client(ui_dir):
           pendingIceCandidates[sid] = [];
 
           pc.ontrack = (e) => {
-            if (videoEl) {
-              const stream = e.streams[0] || new MediaStream([e.track]);
-              videoEl.srcObject = stream;
-              hasAudioTrack = stream.getAudioTracks().length > 0;
-
-              // Attempt unmuted playback first
-              videoEl.muted = false;
-              videoEl.play().then(() => {
-                overlayMessage.style.display = 'none';
-                statusEl.innerText = "Live Broadcast";
-                if (hasAudioTrack) {
-                  btnToggleAudio.innerText = "🔊 Audio: On";
-                  btnToggleAudio.style.background = "#fabd2f";
-                  btnToggleAudio.style.color = "#282828";
-                  audioBanner.style.display = 'none';
-                }
-              }).catch(() => {
-                // If browser autoplay policy blocks unmuted audio, fallback to muted + user interaction prompt
-                videoEl.muted = true;
-                videoEl.play().catch(() => {});
-                overlayMessage.style.display = 'none';
-                if (hasAudioTrack) {
-                  audioBanner.style.display = 'flex';
-                  btnToggleAudio.innerText = "🔇 Audio: Off (Tap to unmute)";
-                  statusEl.innerText = "Live Broadcast (Audio Ready)";
-                } else {
-                  statusEl.innerText = "Live Broadcast";
-                }
-              });
+            if (e.streams && e.streams[0]) {
+              remoteStream = e.streams[0];
+              videoEl.srcObject = remoteStream;
+            } else {
+              remoteStream.addTrack(e.track);
+              videoEl.srcObject = remoteStream;
             }
+
+            hasAudioTrack = remoteStream.getAudioTracks().length > 0;
+
+            videoEl.muted = false;
+            videoEl.volume = 1.0;
+            videoEl.play().then(() => {
+              overlayMessage.style.display = 'none';
+              if (hasAudioTrack) {
+                statusEl.innerText = "Live Broadcast (Audio On)";
+                btnToggleAudio.innerText = "🔊 Audio: On";
+                btnToggleAudio.style.background = "#fabd2f";
+                btnToggleAudio.style.color = "#282828";
+                audioBanner.style.display = 'none';
+              } else {
+                statusEl.innerText = "Live Broadcast";
+              }
+            }).catch(() => {
+              videoEl.muted = true;
+              videoEl.play().catch(() => {});
+              overlayMessage.style.display = 'none';
+              if (hasAudioTrack) {
+                audioBanner.style.display = 'flex';
+                btnToggleAudio.innerText = "🔇 Audio: Muted (Tap to unmute)";
+                statusEl.innerText = "Live Broadcast (Audio Ready)";
+              } else {
+                statusEl.innerText = "Live Broadcast";
+              }
+            });
           };
 
           pc.onicecandidate = (e) => {
@@ -697,38 +704,63 @@ def write_failsafe_client(ui_dir):
 
   async function startShare() {
     try {
-      let stream = null;
+      let screenStream = null;
       try {
-        stream = await navigator.mediaDevices.getDisplayMedia({
+        screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: { frameRate: { ideal: 60, max: 60 } },
           audio: {
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false,
             suppressLocalAudioPlayback: false
-          }
+          },
+          systemAudio: 'include'
         });
       } catch (e1) {
         try {
-          stream = await navigator.mediaDevices.getDisplayMedia({
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: { frameRate: { ideal: 60, max: 60 } },
             audio: true
           });
         } catch (e2) {
-          stream = await navigator.mediaDevices.getDisplayMedia({
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
             audio: false
           });
         }
       }
 
-      activeStream = stream;
+      const combinedStream = new MediaStream();
+      screenStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
+
+      // If screen capture provided audio, add it; otherwise fallback to capturing system/mic input
+      const screenAudioTracks = screenStream.getAudioTracks();
+      if (screenAudioTracks.length > 0) {
+        screenAudioTracks.forEach(track => combinedStream.addTrack(track));
+      } else {
+        try {
+          const micAudio = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
+          micAudio.getAudioTracks().forEach(track => combinedStream.addTrack(track));
+        } catch (audioFallbackErr) {
+          console.warn("System audio fallback unavailable:", audioFallbackErr);
+        }
+      }
+
+      activeStream = combinedStream;
       statusEl.innerText = "Broadcasting Active";
       overlayMessage.style.display = "none";
+
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "share", payload: {} }));
       }
       reportState({ sharing: true });
+
       activeStream.getVideoTracks()[0].addEventListener('ended', () => stopShare());
     } catch (err) {
       console.warn("Screen capture start notice:", err);
