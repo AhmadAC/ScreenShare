@@ -394,7 +394,7 @@ def write_failsafe_client(ui_dir):
   </div>
 
   <div id="controls">
-    <button id="btnToggleAudio">🔊 Audio: Off</button>
+    <button id="btnToggleAudio">🔊 Sound: On</button>
     <button id="btnFullscreen">⛶ Fullscreen</button>
   </div>
 
@@ -417,6 +417,7 @@ def write_failsafe_client(ui_dir):
   const btnStartCapture = document.getElementById('btnStartCapture');
   const videoEl = document.getElementById('remoteVideo');
   const audioBanner = document.getElementById('audioBanner');
+  const controlsEl = document.getElementById('controls');
   const btnToggleAudio = document.getElementById('btnToggleAudio');
   const btnFullscreen = document.getElementById('btnFullscreen');
   const videoContainer = document.getElementById('videoContainer');
@@ -433,7 +434,12 @@ def write_failsafe_client(ui_dir):
   const peerConnections = {};
   const pendingIceCandidates = {};
 
-  videoEl.srcObject = remoteStream;
+  if (isCreate) {
+    controlsEl.style.display = 'none';
+    audioBanner.style.display = 'none';
+  } else {
+    videoEl.srcObject = remoteStream;
+  }
 
   btnFullscreen.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -449,38 +455,50 @@ def write_failsafe_client(ui_dir):
     }
   });
 
+  function updateViewerAudioStatus(playing) {
+    if (isCreate) return;
+    if (playing) {
+      audioBanner.style.display = 'none';
+      btnToggleAudio.innerText = "🔊 Sound: On";
+      btnToggleAudio.style.background = "#fabd2f";
+      btnToggleAudio.style.color = "#282828";
+      statusEl.innerText = "Live Broadcast (Sound Active)";
+    } else {
+      btnToggleAudio.innerText = "🔇 Sound: Muted";
+      btnToggleAudio.style.background = "#3c3836";
+      btnToggleAudio.style.color = "#fbf1c7";
+      statusEl.innerText = "Live Broadcast (Sound Muted)";
+    }
+  }
+
   function unmutePlayback() {
+    if (isCreate) return;
     videoEl.muted = false;
     videoEl.volume = 1.0;
     videoEl.play().then(() => {
-      audioBanner.style.display = 'none';
-      btnToggleAudio.innerText = "🔊 Audio: On";
-      btnToggleAudio.style.background = "#fabd2f";
-      btnToggleAudio.style.color = "#282828";
-      statusEl.innerText = "Live Broadcast (Audio Playing)";
+      updateViewerAudioStatus(true);
     }).catch(() => {
       videoEl.muted = true;
       videoEl.play().catch(() => {});
+      updateViewerAudioStatus(false);
     });
   }
 
   function toggleAudio(e) {
     if (e) e.stopPropagation();
+    if (isCreate) return;
     if (videoEl.muted) {
       unmutePlayback();
     } else {
       videoEl.muted = true;
-      btnToggleAudio.innerText = "🔇 Audio: Muted";
-      btnToggleAudio.style.background = "#3c3836";
-      btnToggleAudio.style.color = "#fbf1c7";
-      statusEl.innerText = "Live Broadcast (Audio Muted)";
+      updateViewerAudioStatus(false);
     }
   }
 
   btnToggleAudio.addEventListener('click', toggleAudio);
   audioBanner.addEventListener('click', unmutePlayback);
   videoContainer.addEventListener('click', () => {
-    if (hasAudioTrack && videoEl.muted) {
+    if (!isCreate && hasAudioTrack && videoEl.muted) {
       unmutePlayback();
     }
   });
@@ -497,6 +515,19 @@ def write_failsafe_client(ui_dir):
       if (server.credential) cfg.credential = server.credential;
       return cfg;
     });
+  }
+
+  function updateHostBadge() {
+    if (!isCreate) return;
+    if (activeStream) {
+      let soundText = isSoundMuted ? "Sound Off" : "Sound On";
+      let micText = isMicMuted ? "Mic Off" : "Mic On";
+      statusEl.innerText = `Broadcasting (${soundText}, ${micText})`;
+      statusEl.style.color = "#8ec07c";
+    } else {
+      statusEl.innerText = "Broadcasting Standby";
+      statusEl.style.color = "#fabd2f";
+    }
   }
 
   function connectSignaling() {
@@ -520,7 +551,7 @@ def write_failsafe_client(ui_dir):
         }));
 
         msgTitle.innerText = "Host Broadcaster Mode";
-        msgDetail.innerText = "Click below to select and broadcast your screen with system sound:";
+        msgDetail.innerText = "Click below to start broadcasting screen & computer sound:";
         btnStartCapture.style.display = "block";
 
         startShare();
@@ -586,23 +617,15 @@ def write_failsafe_client(ui_dir):
             videoEl.volume = 1.0;
             videoEl.play().then(() => {
               overlayMessage.style.display = 'none';
-              if (hasAudioTrack) {
-                statusEl.innerText = "Live Broadcast (Audio On)";
-                btnToggleAudio.innerText = "🔊 Audio: On";
-                btnToggleAudio.style.background = "#fabd2f";
-                btnToggleAudio.style.color = "#282828";
-                audioBanner.style.display = 'none';
-              } else {
-                statusEl.innerText = "Live Broadcast";
-              }
+              updateViewerAudioStatus(true);
             }).catch(() => {
               videoEl.muted = true;
               videoEl.play().catch(() => {});
               overlayMessage.style.display = 'none';
               if (hasAudioTrack) {
                 audioBanner.style.display = 'flex';
-                btnToggleAudio.innerText = "🔇 Audio: Muted (Tap to unmute)";
-                statusEl.innerText = "Live Broadcast (Audio Ready)";
+                btnToggleAudio.innerText = "🔇 Sound: Muted (Tap to hear)";
+                statusEl.innerText = "Live Broadcast (Sound Ready)";
               } else {
                 statusEl.innerText = "Live Broadcast";
               }
@@ -789,8 +812,8 @@ def write_failsafe_client(ui_dir):
       }
 
       activeStream = combinedStream;
-      statusEl.innerText = "Broadcasting Active";
       overlayMessage.style.display = "none";
+      updateHostBadge();
 
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "share", payload: {} }));
@@ -834,6 +857,7 @@ def write_failsafe_client(ui_dir):
         micStream = null;
       }
     }
+    updateHostBadge();
     reportState({ micMuted: isMicMuted });
   }
 
@@ -846,6 +870,7 @@ def write_failsafe_client(ui_dir):
         }
       });
     }
+    updateHostBadge();
     reportState({ soundMuted: isSoundMuted });
   }
 
@@ -867,6 +892,7 @@ def write_failsafe_client(ui_dir):
       msgDetail.innerText = "Screen sharing is stopped. Click below to start broadcasting:";
       btnStartCapture.style.display = "block";
     }
+    updateHostBadge();
     reportState({ sharing: false });
   }
 
