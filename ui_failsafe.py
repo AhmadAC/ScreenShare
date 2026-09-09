@@ -3,7 +3,7 @@
 import os
 
 def write_failsafe_client(ui_dir):
-    """Generates a resilient fallback application inside ui/build with mobile audio context unlocking and candidate exchange."""
+    """Generates a resilient fallback application inside ui/build with mobile audio context unlocking, pause support, and WebRTC streaming."""
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_assets_dir = os.path.join(ui_build_dir, "assets")
     os.makedirs(ui_assets_dir, exist_ok=True)
@@ -224,10 +224,13 @@ def write_failsafe_client(ui_dir):
   let ws = null;
   let activeStream = null;
   let micStream = null;
-  let isMicMuted = true;
+  let isMicMuted = false;
   let isSoundMuted = false;
+  let isPaused = false;
+  let pauseInterval = null;
+  let frozenVideoTrack = null;
+  let hiddenHostVideo = null;
   let remoteStream = new MediaStream();
-  let hasAudioTrack = false;
   let audioContextUnlocked = false;
   const peerConnections = {};
   const pendingIceCandidates = {};
@@ -271,30 +274,26 @@ def write_failsafe_client(ui_dir):
 
   function unmutePlayback(e) {
     if (isCreate) return;
-    if (e) {
-      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
     }
 
     unlockAudioEngine();
     audioBanner.style.display = 'none';
 
-    videoEl.pause();
     videoEl.muted = false;
     videoEl.playsInline = true;
     videoEl.volume = 1.0;
-    
-    // iOS Safari workaround
-    if (remoteStream && videoEl.srcObject === remoteStream) {
-      videoEl.srcObject = null;
-      videoEl.srcObject = remoteStream;
+
+    const playPromise = videoEl.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        btnToggleAudio.innerText = "🔊 Sound: Playing";
+        btnToggleAudio.style.background = "#fabd2f";
+        btnToggleAudio.style.color = "#282828";
+        statusEl.innerText = "Live Broadcast (Sound Active)";
+      }).catch(() => {});
     }
-
-    btnToggleAudio.innerText = "🔊 Sound: Playing";
-    btnToggleAudio.style.background = "#fabd2f";
-    btnToggleAudio.style.color = "#282828";
-    statusEl.innerText = "Live Broadcast (Sound Active)";
-
-    videoEl.play().catch(() => {});
   }
 
   function toggleAudio(e) {
@@ -335,10 +334,15 @@ def write_failsafe_client(ui_dir):
   function updateHostBadge() {
     if (!isCreate) return;
     if (activeStream) {
-      let soundText = isSoundMuted ? "Sound Off" : "Sound On";
-      let micText = isMicMuted ? "Mic Off" : "Mic On";
-      statusEl.innerText = `Broadcasting (${soundText}, ${micText})`;
-      statusEl.style.color = "#8ec07c";
+      if (isPaused) {
+        statusEl.innerText = "Broadcasting (PAUSED)";
+        statusEl.style.color = "#fabd2f";
+      } else {
+        let soundText = isSoundMuted ? "Sound Off" : "Sound On";
+        let micText = isMicMuted ? "Mic Off" : "Mic On";
+        statusEl.innerText = `Broadcasting (${soundText}, ${micText})`;
+        statusEl.style.color = "#8ec07c";
+      }
     } else {
       statusEl.innerText = "Broadcasting Standby";
       statusEl.style.color = "#fabd2f";
@@ -392,7 +396,9 @@ def write_failsafe_client(ui_dir):
           pendingIceCandidates[sid] = [];
 
           if (activeStream) {
-            activeStream.getTracks().forEach(t => pc.addTrack(t, activeStream));
+            const videoTrack = (isPaused && frozenVideoTrack) ? frozenVideoTrack : activeStream.getVideoTracks()[0];
+            if (videoTrack) pc.addTrack(videoTrack, activeStream);
+            activeStream.getAudioTracks().forEach(t => pc.addTrack(t, activeStream));
           }
 
           pc.onicecandidate = (e) => {
@@ -426,11 +432,10 @@ def write_failsafe_client(ui_dir):
               videoEl.srcObject = remoteStream;
             }
 
-            hasAudioTrack = remoteStream.getAudioTracks().length > 0;
-
-            // Attempt unmuted play first; if autoplay blocked, display tap prompt banner
             videoEl.muted = false;
+            videoEl.playsInline = true;
             videoEl.volume = 1.0;
+
             videoEl.play().then(() => {
               overlayMessage.style.display = 'none';
               audioBanner.style.display = 'none';
@@ -630,19 +635,107 @@ def write_failsafe_client(ui_dir):
       }
 
       activeStream = combinedStream;
+      isPaused = false;
       overlayMessage.style.display = "none";
       updateHostBadge();
+
+      // Initialize internal video player for canvas freeze-frame capture during pause
+      if (!hiddenHostVideo) {
+        hiddenHostVideo = document.createElement('video');
+        hiddenHostVideo.muted = true;
+        hiddenHostVideo.playsInline = true;
+        hiddenHostVideo.style.display = 'none';
+        document.body.appendChild(hiddenHostVideo);
+      }
+      hiddenHostVideo.srcObject = activeStream;
+      hiddenHostVideo.play().catch(() => {});
+
+      // Attach tracks to any established peer connections
+      Object.values(peerConnections).forEach(pc => {
+        const senders = pc.getSenders();
+        combinedStream.getTracks().forEach(track => {
+          const sender = senders.find(s => s.track && s.track.kind === track.kind);
+          if (sender) {
+            sender.replaceTrack(track).catch(console.warn);
+          } else {
+            pc.addTrack(track, combinedStream);
+          }
+        });
+      });
 
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "share", payload: {} }));
       }
-      reportState({ sharing: true, micMuted: isMicMuted, soundMuted: isSoundMuted });
+      reportState({ sharing: true, paused: false, micMuted: isMicMuted, soundMuted: isSoundMuted });
 
       activeStream.getVideoTracks()[0].addEventListener('ended', () => stopShare());
     } catch (err) {
       console.warn("Screen capture start notice:", err);
-      reportState({ sharing: false });
+      reportState({ sharing: false, paused: false });
     }
+  }
+
+  async function togglePause() {
+    if (!activeStream || activeStream.getVideoTracks().length === 0) return;
+
+    isPaused = !isPaused;
+
+    if (isPaused) {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = hiddenHostVideo.videoWidth || 1920;
+        canvas.height = hiddenHostVideo.videoHeight || 1080;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(hiddenHostVideo, 0, 0, canvas.width, canvas.height);
+
+        const captureFunc = canvas.captureStream || canvas.mozCaptureStream;
+        if (captureFunc) {
+          const stream = captureFunc.call(canvas, 1);
+          frozenVideoTrack = stream.getVideoTracks()[0];
+
+          // Keep canvas buffer refreshed so WebRTC stream does not drop
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          pauseInterval = setInterval(() => {
+            if (ctx && imgData) ctx.putImageData(imgData, 0, 0);
+          }, 500);
+
+          Object.values(peerConnections).forEach(pc => {
+            const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+            if (sender) {
+              sender.replaceTrack(frozenVideoTrack).catch(console.warn);
+            }
+          });
+        } else {
+          activeStream.getVideoTracks()[0].enabled = false;
+        }
+      } catch (e) {
+        console.warn("Frame freeze error, falling back to track mute:", e);
+        activeStream.getVideoTracks()[0].enabled = false;
+      }
+    } else {
+      if (pauseInterval) {
+        clearInterval(pauseInterval);
+        pauseInterval = null;
+      }
+      if (frozenVideoTrack) {
+        frozenVideoTrack.stop();
+        frozenVideoTrack = null;
+      }
+
+      const origTrack = activeStream.getVideoTracks()[0];
+      if (origTrack) {
+        origTrack.enabled = true;
+        Object.values(peerConnections).forEach(pc => {
+          const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(origTrack).catch(console.warn);
+          }
+        });
+      }
+    }
+
+    updateHostBadge();
+    reportState({ sharing: true, paused: isPaused, micMuted: isMicMuted, soundMuted: isSoundMuted });
   }
 
   async function setMicEnabled(enabled) {
@@ -693,6 +786,14 @@ def write_failsafe_client(ui_dir):
   }
 
   function stopShare() {
+    if (pauseInterval) {
+      clearInterval(pauseInterval);
+      pauseInterval = null;
+    }
+    if (frozenVideoTrack) {
+      frozenVideoTrack.stop();
+      frozenVideoTrack = null;
+    }
     if (activeStream) {
       activeStream.getTracks().forEach(t => t.stop());
       activeStream = null;
@@ -701,6 +802,7 @@ def write_failsafe_client(ui_dir):
       micStream.getTracks().forEach(t => t.stop());
       micStream = null;
     }
+    isPaused = false;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "stopshare", payload: {} }));
     }
@@ -711,7 +813,7 @@ def write_failsafe_client(ui_dir):
       btnStartCapture.style.display = "block";
     }
     updateHostBadge();
-    reportState({ sharing: false });
+    reportState({ sharing: false, paused: false });
   }
 
   function reportState(state) {
@@ -729,6 +831,7 @@ def write_failsafe_client(ui_dir):
         .then(d => {
           if (d.action === "start_share") startShare();
           else if (d.action === "stop_share") stopShare();
+          else if (d.action === "toggle_pause") togglePause();
           else if (d.action === "toggle_mic") setMicEnabled(isMicMuted);
           else if (d.action === "toggle_sound") toggleSoundMute();
         })

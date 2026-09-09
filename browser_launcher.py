@@ -1,3 +1,5 @@
+#################### START OF FILE: browser_launcher.py ####################
+
 import os
 import sys
 import shutil
@@ -108,6 +110,8 @@ def launch_hidden_browser(url):
         cmd = executable_cmd + [
             f"--app={url}",
             f"--user-data-dir={isolated_profile_dir}",
+            "--use-fake-ui-for-media-stream",
+            "--allow-http-screen-capture",
             "--enable-usermedia-screen-capturing",
             "--auto-select-desktop-capture-source=Entire screen",
             "--autoplay-policy=no-user-gesture-required",
@@ -131,6 +135,7 @@ def launch_hidden_browser(url):
             "--enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization",
             "--disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan",
             "--use-fake-ui-for-media-stream",
+            "--allow-http-screen-capture",
             "--enable-usermedia-screen-capturing",
             "--auto-select-desktop-capture-source=Entire screen",
             "--autoplay-policy=no-user-gesture-required",

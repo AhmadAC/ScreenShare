@@ -1,3 +1,5 @@
+#################### START OF FILE: control_server.py ####################
+
 # Control_server.py
 import os
 import sys
@@ -56,7 +58,7 @@ class ScreenShareHostFacade:
         write_link_file(f"http://{self.lan_ip}:5050/?room={self.room_name}")
         setup_pipewire_audio()
         setup_windows_audio()
-        set_physical_mics_muted(True)
+        set_physical_mics_muted(False)
 
         # 1. Start Go Server
         self.server_proc = start_screenshare_server(self.lan_ip)
