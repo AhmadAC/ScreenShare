@@ -156,6 +156,41 @@ def kill_port_owners():
     for port in ports_str:
         subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
 
+def setup_windows_audio():
+    """Ensures Stereo Mix or virtual audio loopback endpoints are enabled on Windows."""
+    if not sys.platform.startswith("win"):
+        return
+    try:
+        import winreg
+        base_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Capture"
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, base_path, 0, winreg.KEY_READ | winreg.KEY_WRITE) as cap_key:
+                num_subkeys = winreg.QueryInfoKey(cap_key)[0]
+                for i in range(num_subkeys):
+                    subkey_name = winreg.EnumKey(cap_key, i)
+                    dev_path = f"{base_path}\\{subkey_name}"
+                    prop_path = f"{dev_path}\\Properties"
+                    try:
+                        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, prop_path, 0, winreg.KEY_READ) as prop_key:
+                            num_vals = winreg.QueryInfoKey(prop_key)[1]
+                            is_loopback = False
+                            for j in range(num_vals):
+                                _, val, _ = winreg.EnumValue(prop_key, j)
+                                if isinstance(val, str) and any(s in val.lower() for s in ["stereo mix", "what u hear", "wave out", "stereo mixer", "cable output"]):
+                                    is_loopback = True
+                                    break
+                            
+                            if is_loopback:
+                                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, dev_path, 0, winreg.KEY_SET_VALUE) as dev_key:
+                                    winreg.SetValueEx(dev_key, "DeviceState", 0, winreg.REG_DWORD, 1)
+                                log(f"Audio setup: Enabled loopback endpoint '{subkey_name}' in Windows registry.")
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+    except Exception as e:
+        log(f"Notice during Windows audio setup: {e}")
+
 def run_audio_cmd(args):
     """Executes pactl commands directly on Linux."""
     if not sys.platform.startswith("linux"):
@@ -229,7 +264,6 @@ def set_physical_mics_muted(muted: bool):
             if hr == 0 and pEnumerator.value:
                 vtable_enum = ctypes.cast(pEnumerator, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))).contents
 
-                # EnumAudioEndpoints(eCapture = 1, DEVICE_STATE_ACTIVE = 1, &pCollection)
                 EnumAudioEndpoints_func = ctypes.WINFUNCTYPE(
                     wintypes.LONG, ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p)
                 )(vtable_enum[3])

@@ -742,6 +742,50 @@ def write_failsafe_client(ui_dir):
           track.enabled = !isSoundMuted;
           combinedStream.addTrack(track);
         });
+      } else {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const loopbackDevice = devices.find(d => 
+            d.kind === 'audioinput' && (
+              d.label.toLowerCase().includes('stereo mix') ||
+              d.label.toLowerCase().includes('what u hear') ||
+              d.label.toLowerCase().includes('cable output') ||
+              d.label.toLowerCase().includes('virtual') ||
+              d.label.toLowerCase().includes('wave out') ||
+              d.label.toLowerCase().includes('monitor') ||
+              d.label.toLowerCase().includes('mix')
+            )
+          );
+
+          let loopbackAudio = null;
+          if (loopbackDevice) {
+            loopbackAudio = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                deviceId: { exact: loopbackDevice.deviceId },
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false
+              }
+            });
+          } else {
+            loopbackAudio = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: false,
+                noiseSuppression: false,
+                autoGainControl: false
+              }
+            });
+          }
+
+          if (loopbackAudio && loopbackAudio.getAudioTracks().length > 0) {
+            loopbackAudio.getAudioTracks().forEach(track => {
+              track.enabled = !isSoundMuted;
+              combinedStream.addTrack(track);
+            });
+          }
+        } catch (audioFallbackErr) {
+          console.warn("Audio loopback acquisition error:", audioFallbackErr);
+        }
       }
 
       activeStream = combinedStream;
