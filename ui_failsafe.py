@@ -206,6 +206,19 @@ def write_failsafe_client(ui_dir):
   const roomId = params.get('room') || 'a';
   const isCreate = params.get('create') === 'true';
 
+  function sendDebugLog(msg, detail) {
+    console.log('[ScreenShare Failsafe] ' + msg, detail || '');
+    try {
+      fetch('http://127.0.0.1:5055/log', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({msg: '[Failsafe] ' + msg, detail: detail || null})
+      }).catch(() => {});
+    } catch (_) {}
+  }
+
+  sendDebugLog('Failsafe client loaded. URL: ' + window.location.href);
+
   const statusEl = document.getElementById('status');
   const roomLabel = document.getElementById('roomLabel');
   const msgTitle = document.getElementById('msgTitle');
@@ -387,6 +400,7 @@ def write_failsafe_client(ui_dir):
     ws.onopen = () => {
       statusEl.innerText = "Connected";
       statusEl.style.color = "#8ec07c";
+      sendDebugLog('WebSocket connected successfully');
 
       if (isCreate) {
         ws.send(JSON.stringify({
@@ -582,6 +596,7 @@ def write_failsafe_client(ui_dir):
 
   async function startShare() {
     try {
+      sendDebugLog('Starting screen capture...');
       let screenStream = null;
       try {
         screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -618,6 +633,8 @@ def write_failsafe_client(ui_dir):
       screenStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
 
       const screenAudioTracks = screenStream.getAudioTracks();
+      sendDebugLog(`getDisplayMedia acquired ${screenStream.getVideoTracks().length} video, ${screenAudioTracks.length} audio tracks`);
+
       if (screenAudioTracks.length > 0) {
         screenAudioTracks.forEach(track => {
           track.enabled = !isSoundMuted;
@@ -660,7 +677,7 @@ def write_failsafe_client(ui_dir):
             });
           }
         } catch (audioFallbackErr) {
-          console.warn("Audio loopback capture notice:", audioFallbackErr);
+          sendDebugLog('Audio loopback fallback notice: ' + audioFallbackErr);
         }
       }
 
@@ -698,7 +715,7 @@ def write_failsafe_client(ui_dir):
 
       activeStream.getVideoTracks()[0].addEventListener('ended', () => stopShare());
     } catch (err) {
-      console.warn("Screen capture start notice:", err);
+      sendDebugLog('Screen capture start error: ' + err);
       reportState({ sharing: false, paused: false });
     }
   }
