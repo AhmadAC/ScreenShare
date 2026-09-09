@@ -154,8 +154,12 @@ def launch_hidden_browser(url):
 
     try:
         proc = subprocess.Popen(
-            cmd, env=clean_env, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, text=True, bufsize=1
+            cmd,
+            env=clean_env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1
         )
         stream_process_logs(proc, "Browser")
 
