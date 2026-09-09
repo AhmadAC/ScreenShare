@@ -549,3 +549,273 @@ basedir=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
 [2026-09-09 14:23:12] Browser process is active and running normally.
 [2026-09-09 14:23:39] Application shutdown initiated. Cleaning up subprocesses...
 [2026-09-09 14:23:39] Cleanup finished. ScreenShare Host terminated.
+[2026-09-09 14:25:36] =================================================================
+[2026-09-09 14:25:36]  ScreenShare Host Starting
+[2026-09-09 14:25:36]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 14:25:36]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 14:25:36]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 14:25:36]  Frozen bundle status  : False
+[2026-09-09 14:25:36] =================================================================
+[2026-09-09 14:25:37]  Detected Local IP     : 172.31.54.46
+[2026-09-09 14:25:37]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 14:25:37] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 14:25:37] ========================================
+[2026-09-09 14:25:37] Source files modified or binary missing. Starting compilation...
+[2026-09-09 14:25:37] ========================================
+[2026-09-09 14:25:37] Building React frontend...
+[2026-09-09 14:25:40] Repairing shell-script corruption in e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.deno\vite@8.0.10\node_modules\vite\bin\vite.js...
+[2026-09-09 14:25:40] Successfully repaired e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.deno\vite@8.0.10\node_modules\vite\bin\vite.js to import Vite CLI.
+[2026-09-09 14:25:40] Resolving Windows package links from Deno store...
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\code-frame'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\compat-data'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\core'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\generator'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\helper-compilation-targets'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\helper-globals'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\helper-module-imports'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\helper-module-transforms'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\helper-string-parser'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\helper-validator-identifier'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\helper-validator-option'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\helpers'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\parser'
+[2026-09-09 14:25:40] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\runtime'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\template'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\traverse'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@babel\\types'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emnapi\\core'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emnapi\\runtime'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emnapi\\wasi-threads'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\babel-plugin'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\cache'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\hash'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\is-prop-valid'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\memoize'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\react'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\serialize'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\sheet'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\styled'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\unitless'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\use-insertion-effect-with-fallbacks'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\utils'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@emotion\\weak-memoize'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@jridgewell\\gen-mapping'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@jridgewell\\remapping'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@jridgewell\\resolve-uri'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@jridgewell\\sourcemap-codec'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@jridgewell\\trace-mapping'
+[2026-09-09 14:25:41] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\core-downloads-tracker'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\icons-material'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\material'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\private-theming'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\private-theming'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\styled-engine'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\styles'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\system'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\types'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\types'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\utils'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@mui\\utils'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@napi-rs\\wasm-runtime'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@oxc-project\\types'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@popperjs\\core'
+[2026-09-09 14:25:42] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-android-arm64'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-darwin-arm64'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-darwin-x64'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-freebsd-x64'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-linux-arm-gnueabihf'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-linux-arm64-gnu'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-linux-arm64-musl'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-linux-ppc64-gnu'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-linux-s390x-gnu'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-linux-x64-gnu'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-linux-x64-musl'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-openharmony-arm64'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-wasm32-wasi'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-win32-arm64-msvc'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-win32-x64-msvc'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\pluginutils'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\pluginutils'
+[2026-09-09 14:25:43] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rollup\\pluginutils'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-plugin-add-jsx-attribute'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-plugin-remove-jsx-attribute'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-plugin-remove-jsx-empty-expression'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-plugin-replace-jsx-attribute-value'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-plugin-svg-dynamic-title'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-plugin-svg-em-dimensions'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-plugin-transform-react-native-svg'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-plugin-transform-svg-component'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\babel-preset'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\core'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\hast-util-to-babel-ast'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@svgr\\plugin-jsx'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@tybys\\wasm-util'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@types\\estree'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@types\\parse-json'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@types\\prop-types'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@types\\react-dom'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@types\\react-transition-group'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@types\\react'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@vitejs\\plugin-react'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\argparse'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\babel-plugin-macros'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\baseline-browser-mapping'
+[2026-09-09 14:25:44] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\browserslist'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\callsites'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\camelcase'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\caniuse-lite'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\clsx'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\clsx'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\convert-source-map'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\convert-source-map'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\cosmiconfig'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\cosmiconfig'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\css-vendor'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\csstype'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\debug'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\detect-libc'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\dom-helpers'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\dot-case'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\electron-to-chromium'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\entities'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\error-ex'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\es-errors'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\escalade'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\escape-string-regexp'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\estree-walker'
+[2026-09-09 14:25:45] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\fdir'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\find-root'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\fsevents'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\function-bind'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\gensync'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\globrex'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\goober'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\hasown'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\hoist-non-react-statics'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\hyphenate-style-name'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\import-fresh'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\is-arrayish'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\is-core-module'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\is-in-browser'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\js-tokens'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\js-yaml'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jsesc'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\json-parse-even-better-errors'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\json5'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jss-plugin-camel-case'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jss-plugin-default-unit'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jss-plugin-global'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jss-plugin-nested'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jss-plugin-props-sort'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jss-plugin-rule-value-function'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jss-plugin-vendor-prefixer'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\jss'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-android-arm64'
+[2026-09-09 14:25:46] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-darwin-arm64'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-darwin-x64'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-freebsd-x64'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-linux-arm-gnueabihf'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-linux-arm64-gnu'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-linux-arm64-musl'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-linux-x64-gnu'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-linux-x64-musl'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-win32-arm64-msvc'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-win32-x64-msvc'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lightningcss-win32-x64-msvc'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lines-and-columns'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\loose-envify'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lower-case'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\lru-cache'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\ms'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\nanoid'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\no-case'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\node-releases'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\notistack'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\object-assign'
+[2026-09-09 14:25:47] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\parent-module'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\parse-json'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\path-parse'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\path-type'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\picocolors'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\picomatch'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\postcss'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\prettier'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\prop-types'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\react-dom'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\react-hotkeys-hook'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\react-is'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\react-is'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\react-transition-group'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\react'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\resolve-from'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\resolve'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\@rolldown\\binding-win32-x64-msvc'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\rolldown'
+[2026-09-09 14:25:48] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\scheduler'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\semver'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\snake-case'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\source-map-js'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\source-map'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\stylis'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\supports-preserve-symlinks-flag'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\svg-parser'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\tiny-warning'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\tinyglobby'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\tsconfck'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\tslib'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\tss-react'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\typescript'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\update-browserslist-db'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\urs'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\use-http'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\use-ssr'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\utility-types'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\vite-plugin-svgr'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\vite-tsconfig-paths'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\vite'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\yallist'
+[2026-09-09 14:25:49] Notice during copytree: [WinError 183] Cannot create a file when that file already exists: 'e:\\2027\\ComputerScripts\\ScreenShare\\ui\\node_modules\\yaml'
+[2026-09-09 14:25:50] Invoking Vite CLI directly: e:\2027\ComputerScripts\ScreenShare\ui\node_modules\.deno\vite@8.0.10\node_modules\vite\dist\node\cli.js
+[2026-09-09 14:25:55] Direct Vite CLI notice: [0m[1m[31merror[0m: Uncaught (in promise) TypeError: Could not find package 'rolldown' from referrer 'file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js'.
+	const { createBuilder } = await import("./chunks/node.js").then((n) => n.w);
+[0m[31m	                          ^[0m
+    at async [0m[1m[3mCAC.<anonymous>[0m ([0m[2m[38;5;245mfile:///E:/2027/ComputerScripts/ScreenShare/ui/[0m[0m[36mnode_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/cli.js[0m:[0m[33m764[0m:[0m[33m28[0m)
+
+[2026-09-09 14:25:57] Deno task build notice: [0m[32mTask[0m [0m[36mbuild[0m vite build
+[0m[1m[31merror[0m: Uncaught (in promise) TypeError: Could not find package 'rolldown' from referrer 'file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js'.
+	const { createBuilder } = await import("./chunks/node.js").then((n) => n.w);
+[0m[31m	                          ^[0m
+    at async [0m[1m[3mCAC.<anonymous>[0m ([0m[2m[38;5;245mfile:///E:/2027/ComputerScripts/ScreenShare/ui/[0m[0m[36mnode_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/cli.js[0m:[0m[33m764[0m:[0m[33m28[0m)
+
+[2026-09-09 14:25:59] Deno npm:vite notice: [0m[1m[31merror[0m: Uncaught (in promise) TypeError: Could not find package 'rolldown' from referrer 'file:///E:/2027/ComputerScripts/ScreenShare/ui/node_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/chunks/node.js'.
+	const { createBuilder } = await import("./chunks/node.js").then((n) => n.w);
+[0m[31m	                          ^[0m
+    at async [0m[1m[3mCAC.<anonymous>[0m ([0m[2m[38;5;245mfile:///E:/2027/ComputerScripts/ScreenShare/ui/[0m[0m[36mnode_modules/.deno/vite@8.0.10/node_modules/vite/dist/node/cli.js[0m:[0m[33m764[0m:[0m[33m28[0m)
+
+[2026-09-09 14:25:59] Compiling Go binary using: C:\Program Files\Go\bin\go.exe ...
+[2026-09-09 14:26:04] Server binary compilation successful.
+[2026-09-09 14:26:04] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 14:26:04] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 14:26:05] [Server stdout] [90m2026-09-09T14:26:05+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 14:26:05] [Server stdout] [90m2026-09-09T14:26:05+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 14:26:05] [Server stdout] [90m2026-09-09T14:26:05+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 14:26:05] [Server stdout] [90m2026-09-09T14:26:05+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 14:26:05] [Server stdout] [90m2026-09-09T14:26:05+08:00[0m [33mWRN[0m [1mcould not open file in ui build, using fallback handler[0m [36merror=[0m[31m[1m"open index.html: file does not exist"[0m[0m [36mfile=[0mindex.html
+[2026-09-09 14:26:05] [Server stdout] [90m2026-09-09T14:26:05+08:00[0m [33mWRN[0m [1mcould not open file in ui build, using fallback handler[0m [36merror=[0m[31m[1m"open index.html: file does not exist"[0m[0m [36mfile=[0mindex.html
+[2026-09-09 14:26:05] [Server stdout] [90m2026-09-09T14:26:05+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 14:26:05] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 14:26:05] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 14:26:05] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 14:26:05] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 14:26:05] =================================================================
+[2026-09-09 14:26:05]  Launching Browser Subprocess
+[2026-09-09 14:26:05]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --test-type --no-sandbox --disable-dev-shm-usage --disable-vulkan --disable-application-cache --disk-cache-size=1 --media-cache-size=1 --ozone-platform-hint=auto --enable-features=WebRTCPipeWireCapturer,VaapiVideoEncoder,VaapiVideoDecoder,CanvasOopRasterization --disable-features=AudioServiceOutOfProcess,AudioServiceSandbox,IsolateOrigins,site-per-process,Vulkan --use-fake-ui-for-media-stream --enable-usermedia-screen-capturing --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 14:26:05]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 14:26:05]  DISPLAY         : <none>
+[2026-09-09 14:26:05]  WAYLAND_DISPLAY : <none>
+[2026-09-09 14:26:05]  XDG_DATA_DIRS   : <none>
+[2026-09-09 14:26:05] =================================================================
+[2026-09-09 14:26:08] Browser process is active and running normally.
+[2026-09-09 14:26:17] Application shutdown initiated. Cleaning up subprocesses...
+[2026-09-09 14:26:17] Cleanup finished. ScreenShare Host terminated.
