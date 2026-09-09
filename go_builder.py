@@ -1,4 +1,5 @@
-# go_builder.py
+#################### START OF FILE: go_builder.py ####################
+
 import os
 import sys
 import shutil
@@ -14,8 +15,7 @@ def needs_rebuild(src_dir, out_bin):
     
     bin_mtime = os.path.getmtime(out_bin)
 
-    # Rebuild if builder scripts themselves were modified
-    for check_file in ["ui_builder.py", "go_builder.py", "process_util.py", "server_builder.py"]:
+    for check_file in ["ui_builder.py", "go_builder.py", "process_util.py", "server_builder.py", "ui_failsafe.py"]:
         p = os.path.join(src_dir, check_file)
         if os.path.isfile(p) and os.path.getmtime(p) > bin_mtime:
             return True
@@ -65,8 +65,8 @@ def compile_go_binary(src_dir, out_bin, go_cmd, is_win, pbar=None):
     output_lines = []
     try:
         proc = subprocess.Popen(
-            cmd, cwd=src_dir, env=env, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, text=True, bufsize=1
+            cmd, cwd=src_dir, env=env, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1
         )
 
         for line in iter(proc.stdout.readline, ''):

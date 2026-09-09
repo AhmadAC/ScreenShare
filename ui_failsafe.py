@@ -178,7 +178,7 @@ def write_failsafe_client(ui_dir):
   </div>
 
   <div id="audioBanner">
-    🔊 Tap to play live audio (turn off Silent Mode)
+    🔊 Tap anywhere to hear sound (turn off Silent Mode)
   </div>
 
   <div id="videoContainer">
@@ -292,7 +292,9 @@ def write_failsafe_client(ui_dir):
         btnToggleAudio.style.background = "#fabd2f";
         btnToggleAudio.style.color = "#282828";
         statusEl.innerText = "Live Broadcast (Sound Active)";
-      }).catch(() => {});
+      }).catch((err) => {
+        console.warn("Playback resume error:", err);
+      });
     }
   }
 
@@ -448,7 +450,7 @@ def write_failsafe_client(ui_dir):
               videoEl.play().catch(() => {});
               overlayMessage.style.display = 'none';
               audioBanner.style.display = 'flex';
-              btnToggleAudio.innerText = "🔇 Sound: Muted (Tap to hear)";
+              btnToggleAudio.innerText = "🔇 Tap to Hear Sound";
               statusEl.innerText = "Live Broadcast (Tap for Sound)";
             });
           };
@@ -475,7 +477,7 @@ def write_failsafe_client(ui_dir):
               pendingIceCandidates[sid] = [];
             }
 
-            const ans = await pc.createAnswer();
+            const ans = await pc.createAnswer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
             await pc.setLocalDescription(ans);
             ws.send(JSON.stringify({
               type: "clientanswer",
@@ -554,16 +556,19 @@ def write_failsafe_client(ui_dir):
       let screenStream = null;
       try {
         screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: { ideal: 60, max: 60 }, displaySurface: "monitor" },
+          video: {
+            displaySurface: "monitor",
+            frameRate: { ideal: 60, max: 60 }
+          },
           audio: {
             echoCancellation: false,
             noiseSuppression: false,
-            autoGainControl: false,
-            suppressLocalAudioPlayback: false
+            autoGainControl: false
           },
-          systemAudio: 'include',
-          selfBrowserSurface: 'exclude',
-          surfaceSwitching: 'include'
+          systemAudio: "include",
+          selfBrowserSurface: "exclude",
+          surfaceSwitching: "include",
+          monitorTypeSurfaces: "include"
         });
       } catch (e1) {
         try {
@@ -590,38 +595,13 @@ def write_failsafe_client(ui_dir):
         });
       } else {
         try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const loopbackDevice = devices.find(d => 
-            d.kind === 'audioinput' && (
-              d.label.toLowerCase().includes('stereo mix') ||
-              d.label.toLowerCase().includes('what u hear') ||
-              d.label.toLowerCase().includes('cable output') ||
-              d.label.toLowerCase().includes('virtual') ||
-              d.label.toLowerCase().includes('wave out') ||
-              d.label.toLowerCase().includes('monitor') ||
-              d.label.toLowerCase().includes('mix')
-            )
-          );
-
-          let audioStream = null;
-          if (loopbackDevice) {
-            audioStream = await navigator.mediaDevices.getUserMedia({
-              audio: {
-                deviceId: { exact: loopbackDevice.deviceId },
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false
-              }
-            });
-          } else {
-            audioStream = await navigator.mediaDevices.getUserMedia({
-              audio: {
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false
-              }
-            });
-          }
+          const audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
 
           if (audioStream && audioStream.getAudioTracks().length > 0) {
             audioStream.getAudioTracks().forEach(track => {
@@ -630,7 +610,7 @@ def write_failsafe_client(ui_dir):
             });
           }
         } catch (audioFallbackErr) {
-          console.warn("Audio loopback acquisition error:", audioFallbackErr);
+          console.warn("Audio fallback capture notice:", audioFallbackErr);
         }
       }
 
@@ -639,7 +619,6 @@ def write_failsafe_client(ui_dir):
       overlayMessage.style.display = "none";
       updateHostBadge();
 
-      // Initialize internal video player for canvas freeze-frame capture during pause
       if (!hiddenHostVideo) {
         hiddenHostVideo = document.createElement('video');
         hiddenHostVideo.muted = true;
@@ -650,7 +629,6 @@ def write_failsafe_client(ui_dir):
       hiddenHostVideo.srcObject = activeStream;
       hiddenHostVideo.play().catch(() => {});
 
-      // Attach tracks to any established peer connections
       Object.values(peerConnections).forEach(pc => {
         const senders = pc.getSenders();
         combinedStream.getTracks().forEach(track => {
@@ -693,7 +671,6 @@ def write_failsafe_client(ui_dir):
           const stream = captureFunc.call(canvas, 1);
           frozenVideoTrack = stream.getVideoTracks()[0];
 
-          // Keep canvas buffer refreshed so WebRTC stream does not drop
           const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           pauseInterval = setInterval(() => {
             if (ctx && imgData) ctx.putImageData(imgData, 0, 0);

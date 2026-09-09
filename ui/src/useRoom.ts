@@ -66,7 +66,7 @@ const hostSession = async ({
         send({type: 'hostice', payload: {sid: sid, value: event.candidate}});
     };
 
-    peer.onconnectionstatechange = (event) => {
+    peer.onconnectionstatechange = () => {
         if (
             peer.connectionState === 'closed' ||
             peer.connectionState === 'disconnected' ||
@@ -107,7 +107,10 @@ const hostSession = async ({
         }
     }
 
-    const hostOffer = await peer.createOffer({offerToReceiveVideo: true});
+    const hostOffer = await peer.createOffer({
+        offerToReceiveVideo: true,
+        offerToReceiveAudio: true,
+    });
     await peer.setLocalDescription(hostOffer);
     send({type: 'hostoffer', payload: {value: hostOffer, sid: sid}});
 
@@ -134,7 +137,7 @@ const clientSession = async ({
         }
         send({type: 'clientice', payload: {sid: sid, value: event.candidate}});
     };
-    peer.onconnectionstatechange = (event) => {
+    peer.onconnectionstatechange = () => {
         if (
             peer.connectionState === 'closed' ||
             peer.connectionState === 'disconnected' ||
@@ -309,7 +312,10 @@ export const useRoom = (config: UIConfig): UseRoom => {
                                     event.payload.value
                                 );
                                 const answer =
-                                    await client.current[event.payload.sid]?.createAnswer();
+                                    await client.current[event.payload.sid]?.createAnswer({
+                                        offerToReceiveAudio: true,
+                                        offerToReceiveVideo: true,
+                                    });
                                 await client.current[event.payload.sid]?.setLocalDescription(
                                     answer
                                 );
@@ -383,18 +389,25 @@ export const useRoom = (config: UIConfig): UseRoom => {
             let screenStream: MediaStream | null = null;
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { frameRate: { ideal: 60, max: 60 } },
+                    video: {
+                        displaySurface: 'monitor',
+                        frameRate: { ideal: 60, max: 60 },
+                    } as any,
                     audio: {
                         echoCancellation: false,
                         noiseSuppression: false,
                         autoGainControl: false,
                     } as any,
-                });
+                    systemAudio: 'include',
+                    selfBrowserSurface: 'exclude',
+                    surfaceSwitching: 'include',
+                    monitorTypeSurfaces: 'include',
+                } as any);
             } catch (err) {
                 try {
                     screenStream = await navigator.mediaDevices.getDisplayMedia({
                         video: { frameRate: { ideal: 60, max: 60 } },
-                        audio: false,
+                        audio: true,
                     });
                 } catch (err2) {
                     screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -417,15 +430,18 @@ export const useRoom = (config: UIConfig): UseRoom => {
             const combinedStream = new MediaStream();
             screenStream.getVideoTracks().forEach((track) => combinedStream.addTrack(track));
 
-            try {
-                const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-                if (AudioContextClass) {
-                    const audioCtx = new AudioContextClass();
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            let audioCtx: AudioContext | null = null;
+            let audioDest: MediaStreamAudioDestinationNode | null = null;
+
+            if (AudioContextClass) {
+                try {
+                    audioCtx = new AudioContextClass();
                     if (audioCtx.state === 'suspended') {
                         audioCtx.resume().catch(() => {});
                     }
                     audioCtxRef.current = audioCtx;
-                    const audioDest = audioCtx.createMediaStreamDestination();
+                    audioDest = audioCtx.createMediaStreamDestination();
 
                     const sysGain = audioCtx.createGain();
                     sysGain.gain.setValueAtTime(isSoundMutedRef.current ? 0 : 1, audioCtx.currentTime);
@@ -436,7 +452,24 @@ export const useRoom = (config: UIConfig): UseRoom => {
                     micGain.gain.setValueAtTime(isMicMutedRef.current ? 0 : 1, audioCtx.currentTime);
                     micGain.connect(audioDest);
                     micGainRef.current = micGain;
+                } catch (audioInitErr) {
+                    console.warn('AudioContext initialization notice:', audioInitErr);
+                }
+            }
 
+            const displayAudioTracks = screenStream.getAudioTracks();
+            if (displayAudioTracks.length > 0) {
+                sysStreamRef.current = new MediaStream(displayAudioTracks);
+                if (audioCtx && sysGainRef.current) {
+                    try {
+                        const sysSource = audioCtx.createMediaStreamSource(sysStreamRef.current);
+                        sysSource.connect(sysGainRef.current);
+                    } catch (e) {
+                        console.warn('Could not pipe display audio through GainNode:', e);
+                    }
+                }
+            } else {
+                try {
                     let audioDevices: MediaDeviceInfo[] = [];
                     try {
                         audioDevices = await navigator.mediaDevices.enumerateDevices();
@@ -445,73 +478,97 @@ export const useRoom = (config: UIConfig): UseRoom => {
                     const isMonitorLabel = (label: string) => {
                         const l = label.toLowerCase();
                         return (
+                            l.includes('stereo mix') ||
+                            l.includes('what u hear') ||
+                            l.includes('cable output') ||
+                            l.includes('virtual') ||
+                            l.includes('wave out') ||
                             l.includes('computer sound') ||
                             l.includes('computersound') ||
                             l.includes('monitor of') ||
                             l.includes('.monitor') ||
-                            l.includes('stereo mix') ||
-                            l.includes('what u hear') ||
-                            l.includes('wave out mix') ||
+                            l.includes('mix') ||
                             l.includes('loopback')
                         );
                     };
 
-                    const displayAudioTracks = screenStream.getAudioTracks();
-                    if (displayAudioTracks.length > 0) {
-                        sysStreamRef.current = new MediaStream(displayAudioTracks);
-                        const sysSource = audioCtx.createMediaStreamSource(sysStreamRef.current);
-                        sysSource.connect(sysGain);
-                    } else {
-                        const monitorDevice = audioDevices.find((d) => d.kind === 'audioinput' && isMonitorLabel(d.label));
-                        if (monitorDevice) {
-                            try {
-                                const fallbackAudio = await navigator.mediaDevices.getUserMedia({
-                                    audio: {
-                                        deviceId: { exact: monitorDevice.deviceId },
-                                        echoCancellation: false,
-                                        noiseSuppression: false,
-                                        autoGainControl: false,
-                                    } as any,
-                                });
-                                sysStreamRef.current = fallbackAudio;
-                                const sysSource = audioCtx.createMediaStreamSource(fallbackAudio);
-                                sysSource.connect(sysGain);
-                            } catch (_) {}
+                    const loopbackDevice = audioDevices.find(
+                        (d) => d.kind === 'audioinput' && isMonitorLabel(d.label) && d.deviceId
+                    );
+
+                    const fallbackAudio = await navigator.mediaDevices.getUserMedia({
+                        audio: loopbackDevice
+                            ? {
+                                  deviceId: { exact: loopbackDevice.deviceId },
+                                  echoCancellation: false,
+                                  noiseSuppression: false,
+                                  autoGainControl: false,
+                              }
+                            : {
+                                  echoCancellation: false,
+                                  noiseSuppression: false,
+                                  autoGainControl: false,
+                              },
+                    });
+
+                    if (fallbackAudio && fallbackAudio.getAudioTracks().length > 0) {
+                        sysStreamRef.current = fallbackAudio;
+                        if (audioCtx && sysGainRef.current) {
+                            const sysSource = audioCtx.createMediaStreamSource(fallbackAudio);
+                            sysSource.connect(sysGainRef.current);
                         }
                     }
+                } catch (audioErr) {
+                    console.warn('Fallback loopback audio acquisition notice:', audioErr);
+                }
+            }
 
-                    const physicalMicDevice = audioDevices.find(
-                        (d) => d.kind === 'audioinput' && !isMonitorLabel(d.label) && d.deviceId
-                    );
-                    if (physicalMicDevice) {
-                        try {
-                            const micStream = await navigator.mediaDevices.getUserMedia({
-                                audio: {
-                                    deviceId: { exact: physicalMicDevice.deviceId },
-                                    echoCancellation: true,
-                                    noiseSuppression: true,
-                                    autoGainControl: true,
-                                },
-                            });
-                            const micTracks = micStream.getAudioTracks();
-                            if (micTracks.length > 0) {
-                                if (isMicMutedRef.current) {
-                                    micTracks.forEach((t) => (t.enabled = false));
-                                }
-                                micStreamRef.current = micStream;
-                                const micSource = audioCtx.createMediaStreamSource(micStream);
-                                micSource.connect(micGain);
-                            }
-                        } catch (_) {}
-                    }
+            try {
+                let audioDevices: MediaDeviceInfo[] = [];
+                try {
+                    audioDevices = await navigator.mediaDevices.enumerateDevices();
+                } catch (_) {}
 
-                    const mixedAudioTracks = audioDest.stream.getAudioTracks();
-                    if (mixedAudioTracks.length > 0) {
-                        combinedStream.addTrack(mixedAudioTracks[0]);
+                const physicalMic = audioDevices.find(
+                    (d) =>
+                        d.kind === 'audioinput' &&
+                        !d.label.toLowerCase().includes('stereo mix') &&
+                        !d.label.toLowerCase().includes('what u hear') &&
+                        !d.label.toLowerCase().includes('cable output') &&
+                        !d.label.toLowerCase().includes('monitor') &&
+                        !d.label.toLowerCase().includes('computersound') &&
+                        !d.label.toLowerCase().includes('computer sound') &&
+                        d.deviceId
+                );
+
+                if (physicalMic) {
+                    const micAudio = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            deviceId: { exact: physicalMic.deviceId },
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                        },
+                    });
+                    if (micAudio && micAudio.getAudioTracks().length > 0) {
+                        micStreamRef.current = micAudio;
+                        if (isMicMutedRef.current) {
+                            micAudio.getAudioTracks().forEach((t) => (t.enabled = false));
+                        }
+                        if (audioCtx && micGainRef.current) {
+                            const micSource = audioCtx.createMediaStreamSource(micAudio);
+                            micSource.connect(micGainRef.current);
+                        }
                     }
                 }
-            } catch (audioErr) {
-                console.warn('Audio mixer setup skipped or failed:', audioErr);
+            } catch (_) {}
+
+            if (audioDest && audioDest.stream.getAudioTracks().length > 0) {
+                combinedStream.addTrack(audioDest.stream.getAudioTracks()[0]);
+            } else {
+                if (sysStreamRef.current) {
+                    sysStreamRef.current.getAudioTracks().forEach((t) => combinedStream.addTrack(t));
+                }
             }
 
             stream.current = combinedStream;
@@ -565,6 +622,8 @@ export const useRoom = (config: UIConfig): UseRoom => {
             audioCtxRef.current.close().catch(() => {});
         }
         audioCtxRef.current = null;
+        sysGainRef.current = null;
+        micGainRef.current = null;
 
         Object.values(host.current).forEach((peer) => {
             peer.close();

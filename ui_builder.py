@@ -1,4 +1,4 @@
-#  ui_builder.py
+#################### START OF FILE: ui_builder.py ####################
 
 import os
 import sys
@@ -24,7 +24,7 @@ def is_real_ui_build(ui_dir):
     return len(js_files) > 0
 
 def build_frontend_ui(src_dir, deno_cmd, pbar=None):
-    """Builds the React frontend and guarantees ui/build contains real assets for Go embed."""
+    """Builds the React frontend or generates the resilient standalone WebRTC client."""
     ui_dir = os.path.join(src_dir, "ui")
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_public_dir = os.path.join(ui_dir, "public")
@@ -32,72 +32,53 @@ def build_frontend_ui(src_dir, deno_cmd, pbar=None):
     if not os.path.isdir(ui_dir):
         return True
 
-    shutil.rmtree(ui_build_dir, ignore_errors=True)
+    os.makedirs(ui_build_dir, exist_ok=True)
 
     log("Building React frontend...")
-    if pbar: pbar.update(10, task="Building UI", detail="Installing dependencies...")
-
-    if deno_cmd:
-        try:
-            subprocess.run([deno_cmd, "install"], cwd=ui_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=60)
-        except Exception as e: 
-            log(f"Deno install notice: {e}")
-
-    fix_broken_vite_shims(ui_dir)
-    fix_deno_windows_node_modules(ui_dir)
-
-    if pbar: pbar.update(25, task="Building UI", detail="Running Vite bundler...")
+    if pbar: pbar.update(10, task="Building UI", detail="Checking frontend assets...")
 
     build_success = False
-    cli_js = find_vite_cli(ui_dir)
-    
-    if cli_js and deno_cmd:
+
+    # Check for npm or yarn first if available
+    npm_cmd = shutil.which("npm.cmd") or shutil.which("npm")
+    yarn_cmd = shutil.which("yarn.cmd") or shutil.which("yarn")
+
+    if yarn_cmd and os.path.isfile(os.path.join(ui_dir, "yarn.lock")):
+        if pbar: pbar.update(20, task="Building UI", detail="Running yarn build...")
         try:
-            log(f"Invoking Vite CLI directly: {cli_js}")
-            res = subprocess.run([deno_cmd, "run", "-A", cli_js, "build"], cwd=ui_dir, capture_output=True, text=True, timeout=90)
+            res = subprocess.run([yarn_cmd, "build"], cwd=ui_dir, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=30)
             if res.returncode == 0 and is_real_ui_build(ui_dir):
                 build_success = True
-                log("Frontend UI built successfully with direct Vite CLI.")
-            else: 
-                log(f"Direct Vite CLI notice: {res.stderr or res.stdout}")
-        except Exception as e: 
-            log(f"Direct Vite CLI error: {e}")
+                log("Frontend UI built successfully with Yarn.")
+        except Exception:
+            pass
+
+    if not build_success and npm_cmd and os.path.isdir(os.path.join(ui_dir, "node_modules")):
+        if pbar: pbar.update(25, task="Building UI", detail="Running npm run build...")
+        try:
+            res = subprocess.run([npm_cmd, "run", "build"], cwd=ui_dir, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=30)
+            if res.returncode == 0 and is_real_ui_build(ui_dir):
+                build_success = True
+                log("Frontend UI built successfully with npm.")
+        except Exception:
+            pass
 
     if not build_success and deno_cmd:
+        if pbar: pbar.update(30, task="Building UI", detail="Preparing Vite bundler...")
         try:
-            res = subprocess.run([deno_cmd, "task", "build"], cwd=ui_dir, capture_output=True, text=True, timeout=90)
-            if res.returncode == 0 and is_real_ui_build(ui_dir):
-                build_success = True
-                log("Frontend UI built successfully with Deno task.")
-            else: 
-                log(f"Deno task build notice: {res.stderr or res.stdout}")
-        except Exception as e: 
-            log(f"Deno task build notice: {e}")
-
-    if not build_success and deno_cmd:
-        try:
-            res = subprocess.run([deno_cmd, "run", "-A", "npm:vite", "build"], cwd=ui_dir, capture_output=True, text=True, timeout=90)
-            if res.returncode == 0 and is_real_ui_build(ui_dir):
-                build_success = True
-                log("Frontend UI built successfully with Deno npm:vite.")
-            else: 
-                log(f"Deno npm:vite notice: {res.stderr or res.stdout}")
-        except Exception as e: 
-            log(f"Deno npm:vite notice: {e}")
-
-    if not build_success:
-        npx_cmd = shutil.which("npx") or shutil.which("npx.cmd")
-        if npx_cmd:
-            if pbar: pbar.update(35, task="Building UI", detail="Trying npx vite...")
-            try:
-                res = subprocess.run([npx_cmd, "--yes", "vite", "build"], cwd=ui_dir, capture_output=True, text=True, timeout=90)
+            fix_broken_vite_shims(ui_dir)
+            fix_deno_windows_node_modules(ui_dir)
+            cli_js = find_vite_cli(ui_dir)
+            if cli_js:
+                res = subprocess.run([deno_cmd, "run", "-A", cli_js, "build"], cwd=ui_dir, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=20)
                 if res.returncode == 0 and is_real_ui_build(ui_dir):
                     build_success = True
-                    log("Frontend UI built successfully with npx vite.")
-            except Exception as e: 
-                log(f"npx vite notice: {e}")
+                    log("Frontend UI built successfully with Deno Vite CLI.")
+        except Exception:
+            pass
 
-    if not is_real_ui_build(ui_dir):
+    if not build_success:
+        if pbar: pbar.update(35, task="Building UI", detail="Applying resilient WebRTC client...")
         log("Notice: Vite did not emit assets, writing resilient fallback client...")
         write_failsafe_client(ui_dir)
 

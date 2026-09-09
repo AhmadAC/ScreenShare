@@ -137,11 +137,12 @@ export const Room = ({
         if (videoElement && stream && !isHostSelfStream) {
             videoElement.srcObject = stream;
             videoElement.muted = false;
+            videoElement.playsInline = true;
             videoElement
                 .play()
                 .then(() => setAudioBlocked(false))
                 .catch((err) => {
-                    if (err.name === 'NotAllowedError') {
+                    if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
                         videoElement.muted = true;
                         videoElement
                             .play()
@@ -158,14 +159,24 @@ export const Room = ({
 
     const enableAudio = () => {
         if (videoElement) {
-            videoElement.pause();
+            try {
+                const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                if (AudioCtx) {
+                    const ctx = new AudioCtx();
+                    if (ctx.state === 'suspended') {
+                        ctx.resume().catch(() => {});
+                    }
+                }
+            } catch (_) {}
+
             videoElement.muted = false;
             videoElement.playsInline = true;
-            
-            // Safari workaround: re-attach the stream
-            if (stream && videoElement.srcObject === stream) {
+            videoElement.volume = 1.0;
+
+            const currentSrc = videoElement.srcObject;
+            if (currentSrc) {
                 videoElement.srcObject = null;
-                videoElement.srcObject = stream;
+                videoElement.srcObject = currentSrc;
             }
 
             videoElement
@@ -288,7 +299,7 @@ export const Room = ({
     };
 
     return (
-        <div className={classes.videoContainer}>
+        <div className={classes.videoContainer} onClick={audioBlocked ? enableAudio : undefined}>
             {audioBlocked && !isHostSelfStream && (
                 <Paper
                     elevation={10}
@@ -300,20 +311,21 @@ export const Room = ({
                         zIndex: 40,
                         backgroundColor: '#fabd2f',
                         color: '#282828',
-                        padding: '10px 20px',
+                        padding: '12px 24px',
                         cursor: 'pointer',
-                        borderRadius: '8px',
+                        borderRadius: '24px',
                         fontWeight: 'bold',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '10px',
+                        boxShadow: '0 6px 20px rgba(0,0,0,0.6)',
                     }}
                     onClick={enableAudio}
                     onTouchStart={enableAudio}
                 >
                     <VolumeIcon />
                     <Typography variant="body1" style={{fontWeight: 'bold', color: '#282828'}}>
-                        Tap to enable sound (turn off Silent Mode)
+                        Tap anywhere to hear sound (turn off Silent Mode)
                     </Typography>
                 </Paper>
             )}
