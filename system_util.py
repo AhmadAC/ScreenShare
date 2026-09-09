@@ -1,0 +1,260 @@
+import os
+import sys
+import socket
+import shutil
+import datetime
+import subprocess
+
+# AppImage sets $OWD to the directory where the user launched the application
+EXECUTION_DIR = os.environ.get("OWD", os.getcwd())
+LOG_FILE_PATH = os.path.join(EXECUTION_DIR, "ScreenShare-host.log")
+LINK_FILE_PATH = os.path.join(EXECUTION_DIR, "link.txt")
+
+original_default_source = None
+remap_module_id = None
+active_audio_source_name = None
+
+def get_base_dir():
+    """Returns the base directory whether running as script or frozen PyInstaller binary."""
+    if getattr(sys, 'frozen', False):
+        return getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+BASE_DIR = get_base_dir()
+
+def log(msg):
+    """Outputs timestamped message to stdout and appends to ScreenShare-host.log."""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    formatted = f"[{timestamp}] {msg}"
+    print(formatted)
+    try:
+        with open(LOG_FILE_PATH, "a", encoding="utf-8") as f:
+            f.write(formatted + "\n")
+    except Exception as e:
+        print(f"Failed to write to log file {LOG_FILE_PATH}: {e}")
+
+def write_link_file(url):
+    """Writes the shareable viewer URL to link.txt in the execution directory."""
+    try:
+        with open(LINK_FILE_PATH, "w", encoding="utf-8") as f:
+            f.write(url.strip() + "\n")
+        log(f"Viewer link written to: {LINK_FILE_PATH}")
+    except Exception as e:
+        log(f"Failed to write link.txt: {e}")
+
+def get_clean_host_env():
+    """Strips AppImage and PyInstaller specific variables so host processes don't crash."""
+    env = os.environ.copy()
+    if sys.platform.startswith("win"):
+        return env
+
+    vars_to_remove = [
+        "LD_LIBRARY_PATH", "LD_PRELOAD", "PYTHONPATH", "PYTHONHOME",
+        "QT_PLUGIN_PATH", "QML2_IMPORT_PATH", "GSETTINGS_SCHEMA_DIR",
+        "GTK_PATH", "GTK_MODULES", "GTK_EXE_PREFIX", "FONTCONFIG_PATH",
+        "FONTCONFIG_FILE", "APPIMAGE", "APPDIR", "ARGV0"
+    ]
+    for var in vars_to_remove:
+        env.pop(var, None)
+
+    current_path = env.get("PATH", "")
+    paths = [p for p in current_path.split(":") if not p.startswith("/tmp/.mount_")]
+    extra_paths = [
+        "/usr/local/bin", "/usr/bin", "/bin", "/usr/local/sbin", "/usr/sbin", "/sbin",
+        "/snap/bin", "/var/lib/flatpak/exports/bin",
+        os.path.expanduser("~/.local/share/flatpak/exports/bin"),
+        os.path.expanduser("~/.local/bin"), os.path.expanduser("~/bin"),
+    ]
+    for ep in extra_paths:
+        if ep not in paths:
+            paths.append(ep)
+    env["PATH"] = ":".join(paths)
+
+    xdg_data = env.get("XDG_DATA_DIRS", "")
+    if xdg_data:
+        cleaned_dirs = [d for d in xdg_data.split(":") if not d.startswith("/tmp/.mount_")]
+        standard_xdg = [
+            os.path.expanduser("~/.local/share/flatpak/exports/share"),
+            "/var/lib/flatpak/exports/share", "/usr/local/share", "/usr/share"
+        ]
+        for s in standard_xdg:
+            if s not in cleaned_dirs:
+                cleaned_dirs.append(s)
+        env["XDG_DATA_DIRS"] = ":".join(cleaned_dirs)
+    else:
+        env["XDG_DATA_DIRS"] = f"{os.path.expanduser('~/.local/share/flatpak/exports/share')}:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share"
+
+    return env
+
+def detect_lan_ip():
+    """Automatically detects the real Wi-Fi / Ethernet IPv4 address, filtering out virtual/TUN subnets."""
+    if sys.platform.startswith("linux"):
+        clean_env = get_clean_host_env()
+        try:
+            res = subprocess.run(["ip", "-4", "-o", "addr", "show"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
+            candidates = []
+            for line in res.stdout.strip().split("\n"):
+                if not line:
+                    continue
+                parts = line.split()
+                if len(parts) >= 4:
+                    ifname = parts[1]
+                    ip = parts[3].split("/")[0]
+                    if ip.startswith("127.") or ip.startswith("198.18.") or ip.startswith("169.254."):
+                        continue
+                    if any(ifname.startswith(p) for p in ["lo", "docker", "veth", "br-", "tun", "tap", "wg", "tailscale"]):
+                        continue
+                    candidates.append((ifname, ip))
+
+            for ifname, ip in candidates:
+                if ifname.startswith("wl") or ifname.startswith("eth") or ifname.startswith("en"):
+                    return ip
+            if candidates:
+                return candidates[0][1]
+        except Exception:
+            pass
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("1.1.1.1", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        if not ip.startswith("198.18.") and not ip.startswith("127."):
+            return ip
+    except Exception:
+        pass
+
+    return "127.0.0.1"
+
+def kill_port_owners():
+    """Terminates any stale processes using ScreenShare/Control ports on Linux."""
+    if not sys.platform.startswith("linux"):
+        return
+    clean_env = get_clean_host_env()
+    ports = ["5050/tcp", "5055/tcp", "3478/tcp", "3478/udp"]
+    for port in ports:
+        subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
+
+def run_audio_cmd(args):
+    """Executes pactl commands directly."""
+    if not sys.platform.startswith("linux"):
+        return
+    clean_env = get_clean_host_env()
+    try:
+        subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
+    except Exception:
+        pass
+
+def get_physical_mic_sources():
+    """Returns a list of all physical microphone source names on Linux."""
+    if not sys.platform.startswith("linux"):
+        return []
+    clean_env = get_clean_host_env()
+    try:
+        res = subprocess.run(["pactl", "list", "short", "sources"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
+        sources = []
+        for line in res.stdout.strip().split("\n"):
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) >= 2:
+                sname = parts[1]
+                if not sname.endswith(".monitor") and sname != "ComputerSound":
+                    sources.append(sname)
+        return sources
+    except Exception:
+        return []
+
+def set_physical_mics_muted(muted: bool):
+    """Mutes or unmutes all physical microphones at the OS PulseAudio/PipeWire level."""
+    if not sys.platform.startswith("linux"):
+        return
+    mute_val = "1" if muted else "0"
+    for s in get_physical_mic_sources():
+        run_audio_cmd(["pactl", "set-source-mute", s, mute_val])
+    if original_default_source and not original_default_source.endswith(".monitor") and original_default_source != "ComputerSound":
+        run_audio_cmd(["pactl", "set-source-mute", original_default_source, mute_val])
+
+def setup_pipewire_audio():
+    """Sets up virtual audio source (Computer Sound) monitoring on Linux."""
+    if not sys.platform.startswith("linux"):
+        return
+    global original_default_source, remap_module_id, active_audio_source_name
+    clean_env = get_clean_host_env()
+    try:
+        res_src = subprocess.run(["pactl", "get-default-source"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
+        original_default_source = res_src.stdout.strip()
+
+        res_sink = subprocess.run(["pactl", "get-default-sink"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
+        default_sink = res_sink.stdout.strip()
+        if not default_sink:
+            return
+
+        monitor_source = f"{default_sink}.monitor"
+        load_res = subprocess.run([
+            "pactl", "load-module", "module-remap-source",
+            "source_name=ComputerSound",
+            f"master={monitor_source}",
+            "source_properties=device.description=\"Computer Sound\""
+        ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=clean_env)
+
+        if load_res.returncode == 0 and load_res.stdout.strip().isdigit():
+            remap_module_id = load_res.stdout.strip()
+            active_audio_source_name = "ComputerSound"
+            run_audio_cmd(["pactl", "set-default-source", "ComputerSound"])
+            run_audio_cmd(["pactl", "set-source-mute", "ComputerSound", "0"])
+            run_audio_cmd(["pactl", "set-source-volume", "ComputerSound", "100%"])
+            log("Audio setup: Loaded module-remap-source ('Computer Sound')")
+        else:
+            active_audio_source_name = monitor_source
+            run_audio_cmd(["pactl", "set-default-source", monitor_source])
+            run_audio_cmd(["pactl", "set-source-mute", monitor_source, "0"])
+            log(f"Audio setup: Default source fallback to {monitor_source}")
+    except Exception as e:
+        log(f"Warning: Audio setup encountered: {e}")
+
+def cleanup_audio():
+    """Restores the original audio default source and unmutes physical microphones on Linux."""
+    if not sys.platform.startswith("linux"):
+        return
+    global original_default_source, remap_module_id
+    set_physical_mics_muted(False)
+
+    if remap_module_id:
+        run_audio_cmd(["pactl", "unload-module", remap_module_id])
+    else:
+        run_audio_cmd(["pactl", "unload-module", "module-remap-source"])
+
+    if original_default_source:
+        run_audio_cmd(["pactl", "set-default-source", original_default_source])
+
+def get_active_audio_source():
+    """Returns the name of the currently active virtual audio source."""
+    return active_audio_source_name or "ComputerSound"
+
+def sync_audio_volume():
+    """Continuously syncs the default sink volume to Computer Sound on Linux."""
+    if not sys.platform.startswith("linux"):
+        return
+    clean_env = get_clean_host_env()
+    try:
+        res = subprocess.run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"], stdout=subprocess.PIPE, text=True, env=clean_env)
+        if res.stdout:
+            parts = res.stdout.split('/')
+            if len(parts) > 1:
+                vol_str = parts[1].strip()
+                source = get_active_audio_source()
+                subprocess.run(["pactl", "set-source-volume", source, vol_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
+
+        proc = subprocess.Popen(["pactl", "subscribe"], stdout=subprocess.PIPE, text=True, env=clean_env)
+        for line in iter(proc.stdout.readline, ''):
+            if "change" in line and "sink" in line:
+                res = subprocess.run(["pactl", "get-sink-volume", "@DEFAULT_SINK@"], stdout=subprocess.PIPE, text=True, env=clean_env)
+                if res.stdout:
+                    parts = res.stdout.split('/')
+                    if len(parts) > 1:
+                        vol_str = parts[1].strip()
+                        source = get_active_audio_source()
+                        subprocess.run(["pactl", "set-source-volume", source, vol_str], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
+    except Exception:
+        pass

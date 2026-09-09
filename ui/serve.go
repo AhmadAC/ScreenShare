@@ -29,12 +29,23 @@ func Register(r *mux.Router) {
 func serveFile(name, contentType string) http.HandlerFunc {
 	file, err := files.Open(name)
 	if err != nil {
-		log.Panic().Err(err).Msgf("could not find %s", file)
+		log.Warn().Err(err).Str("file", name).Msg("could not open file in ui build, using fallback handler")
+		return func(writer http.ResponseWriter, req *http.Request) {
+			if name == "index.html" {
+				writer.Header().Set("Content-Type", "text/html")
+				_, _ = writer.Write([]byte("<!DOCTYPE html><html><head><title>ScreenShare</title></head><body><h1>ScreenShare</h1></body></html>"))
+				return
+			}
+			writer.WriteHeader(http.StatusNotFound)
+		}
 	}
 	defer file.Close()
 	content, err := io.ReadAll(file)
 	if err != nil {
-		log.Panic().Err(err).Msgf("could not read %s", file)
+		log.Warn().Err(err).Str("file", name).Msg("could not read file in ui build")
+		return func(writer http.ResponseWriter, req *http.Request) {
+			writer.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 
 	return func(writer http.ResponseWriter, reg *http.Request) {

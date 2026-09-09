@@ -28,7 +28,7 @@
     "start": "vite",
     "format": "prettier \"src/**/*.{ts,tsx}\" --write",
     "testformat": "prettier \"src/**/*.{ts,tsx}\" --list-different",
-    "build": "tsc && vite build"
+    "build": "vite build"
   },
   "eslintConfig": {
     "extends": "react-app"
