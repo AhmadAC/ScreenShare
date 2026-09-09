@@ -13,7 +13,8 @@ from PySide6.QtWidgets import QApplication
 from system_util import (
     log, EXECUTION_DIR, LOG_FILE_PATH,
     detect_lan_ip, write_link_file, kill_port_owners,
-    setup_pipewire_audio, cleanup_audio, sync_audio_volume
+    setup_pipewire_audio, cleanup_audio, sync_audio_volume,
+    set_physical_mics_muted
 )
 from server_builder import (
     start_screenshare_server, wait_for_server, launch_hidden_browser
@@ -54,6 +55,7 @@ class ScreenShareHostFacade:
 
         write_link_file(f"http://{self.lan_ip}:5050/?room={self.room_name}")
         setup_pipewire_audio()
+        set_physical_mics_muted(True)
 
         # 1. Start Go Server
         self.server_proc = start_screenshare_server(self.lan_ip)

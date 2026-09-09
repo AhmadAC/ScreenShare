@@ -425,6 +425,9 @@ def write_failsafe_client(ui_dir):
 
   let ws = null;
   let activeStream = null;
+  let micStream = null;
+  let isMicMuted = true;
+  let isSoundMuted = false;
   let remoteStream = new MediaStream();
   let hasAudioTrack = false;
   const peerConnections = {};
@@ -733,23 +736,12 @@ def write_failsafe_client(ui_dir):
       const combinedStream = new MediaStream();
       screenStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
 
-      // If screen capture provided audio, add it; otherwise fallback to capturing system/mic input
       const screenAudioTracks = screenStream.getAudioTracks();
       if (screenAudioTracks.length > 0) {
-        screenAudioTracks.forEach(track => combinedStream.addTrack(track));
-      } else {
-        try {
-          const micAudio = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false
-            }
-          });
-          micAudio.getAudioTracks().forEach(track => combinedStream.addTrack(track));
-        } catch (audioFallbackErr) {
-          console.warn("System audio fallback unavailable:", audioFallbackErr);
-        }
+        screenAudioTracks.forEach(track => {
+          track.enabled = !isSoundMuted;
+          combinedStream.addTrack(track);
+        });
       }
 
       activeStream = combinedStream;
@@ -759,7 +751,7 @@ def write_failsafe_client(ui_dir):
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "share", payload: {} }));
       }
-      reportState({ sharing: true });
+      reportState({ sharing: true, micMuted: isMicMuted, soundMuted: isSoundMuted });
 
       activeStream.getVideoTracks()[0].addEventListener('ended', () => stopShare());
     } catch (err) {
@@ -768,10 +760,59 @@ def write_failsafe_client(ui_dir):
     }
   }
 
+  async function setMicEnabled(enabled) {
+    isMicMuted = !enabled;
+    if (enabled) {
+      if (!micStream) {
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+          });
+          const micTrack = micStream.getAudioTracks()[0];
+          if (micTrack && activeStream) {
+            activeStream.addTrack(micTrack);
+            Object.values(peerConnections).forEach(pc => {
+              pc.addTrack(micTrack, activeStream);
+            });
+          }
+        } catch (e) {
+          console.warn("Mic acquisition failed:", e);
+        }
+      } else {
+        micStream.getAudioTracks().forEach(t => t.enabled = true);
+      }
+    } else {
+      if (micStream) {
+        micStream.getAudioTracks().forEach(t => {
+          t.enabled = false;
+          t.stop();
+        });
+        micStream = null;
+      }
+    }
+    reportState({ micMuted: isMicMuted });
+  }
+
+  function toggleSoundMute() {
+    isSoundMuted = !isSoundMuted;
+    if (activeStream) {
+      activeStream.getAudioTracks().forEach(t => {
+        if (!micStream || !micStream.getAudioTracks().includes(t)) {
+          t.enabled = !isSoundMuted;
+        }
+      });
+    }
+    reportState({ soundMuted: isSoundMuted });
+  }
+
   function stopShare() {
     if (activeStream) {
       activeStream.getTracks().forEach(t => t.stop());
       activeStream = null;
+    }
+    if (micStream) {
+      micStream.getTracks().forEach(t => t.stop());
+      micStream = null;
     }
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "stopshare", payload: {} }));
@@ -800,6 +841,8 @@ def write_failsafe_client(ui_dir):
         .then(d => {
           if (d.action === "start_share") startShare();
           else if (d.action === "stop_share") stopShare();
+          else if (d.action === "toggle_mic") setMicEnabled(isMicMuted);
+          else if (d.action === "toggle_sound") toggleSoundMute();
         })
         .catch(() => {});
     }, 300);

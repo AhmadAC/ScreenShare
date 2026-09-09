@@ -157,7 +157,7 @@ def kill_port_owners():
         subprocess.run(["fuser", "-k", port], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=clean_env)
 
 def run_audio_cmd(args):
-    """Executes pactl commands directly."""
+    """Executes pactl commands directly on Linux."""
     if not sys.platform.startswith("linux"):
         return
     clean_env = get_clean_host_env()
@@ -187,9 +187,97 @@ def get_physical_mic_sources():
         return []
 
 def set_physical_mics_muted(muted: bool):
-    """Mutes or unmutes all physical microphones at the OS PulseAudio/PipeWire level."""
-    if not sys.platform.startswith("linux"):
+    """Mutes or unmutes all physical microphones at the OS level on Windows and Linux."""
+    if sys.platform.startswith("win"):
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            ole32 = ctypes.windll.ole32
+            ole32.CoInitialize(None)
+
+            class GUID(ctypes.Structure):
+                _fields_ = [
+                    ("Data1", wintypes.DWORD),
+                    ("Data2", wintypes.WORD),
+                    ("Data3", wintypes.WORD),
+                    ("Data4", wintypes.BYTE * 8)
+                ]
+
+            def make_guid(d1, d2, d3, d4_bytes):
+                g = GUID()
+                g.Data1 = d1
+                g.Data2 = d2
+                g.Data3 = d3
+                for i in range(8):
+                    g.Data4[i] = d4_bytes[i]
+                return g
+
+            CLSID_MMDeviceEnumerator = make_guid(0xBCDE0395, 0xE52F, 0x467C, [0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E])
+            IID_IMMDeviceEnumerator = make_guid(0xA95664D2, 0x9614, 0x4F35, [0xA7, 0x46, 0xDE, 0x8D, 0xB6, 0x36, 0x17, 0xE6])
+            IID_IAudioEndpointVolume = make_guid(0x5CDF2C82, 0x841E, 0x4546, [0x97, 0x22, 0x0C, 0xF7, 0x40, 0x78, 0x22, 0x9A])
+
+            pEnumerator = ctypes.c_void_p()
+            hr = ole32.CoCreateInstance(
+                ctypes.byref(CLSID_MMDeviceEnumerator),
+                None,
+                1,  # CLSCTX_INPROC_SERVER
+                ctypes.byref(IID_IMMDeviceEnumerator),
+                ctypes.byref(pEnumerator)
+            )
+
+            if hr == 0 and pEnumerator.value:
+                vtable_enum = ctypes.cast(pEnumerator, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))).contents
+
+                # EnumAudioEndpoints(eCapture = 1, DEVICE_STATE_ACTIVE = 1, &pCollection)
+                EnumAudioEndpoints_func = ctypes.WINFUNCTYPE(
+                    wintypes.LONG, ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p)
+                )(vtable_enum[3])
+
+                pCollection = ctypes.c_void_p()
+                hr_coll = EnumAudioEndpoints_func(pEnumerator, 1, 1, ctypes.byref(pCollection))
+
+                if hr_coll == 0 and pCollection.value:
+                    vtable_coll = ctypes.cast(pCollection, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))).contents
+                    GetCount_func = ctypes.WINFUNCTYPE(wintypes.LONG, ctypes.c_void_p, ctypes.POINTER(wintypes.UINT))(vtable_coll[3])
+                    Item_func = ctypes.WINFUNCTYPE(wintypes.LONG, ctypes.c_void_p, wintypes.UINT, ctypes.POINTER(ctypes.c_void_p))(vtable_coll[4])
+
+                    count = wintypes.UINT(0)
+                    GetCount_func(pCollection, ctypes.byref(count))
+
+                    for i in range(count.value):
+                        pDevice = ctypes.c_void_p()
+                        if Item_func(pCollection, i, ctypes.byref(pDevice)) == 0 and pDevice.value:
+                            vtable_dev = ctypes.cast(pDevice, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))).contents
+                            Activate_func = ctypes.WINFUNCTYPE(
+                                wintypes.LONG, ctypes.c_void_p, ctypes.POINTER(GUID), wintypes.DWORD, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)
+                            )(vtable_dev[3])
+
+                            pEndpointVol = ctypes.c_void_p()
+                            if Activate_func(pDevice, ctypes.byref(IID_IAudioEndpointVolume), 23, None, ctypes.byref(pEndpointVol)) == 0 and pEndpointVol.value:
+                                vtable_vol = ctypes.cast(pEndpointVol, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))).contents
+                                SetMute_func = ctypes.WINFUNCTYPE(
+                                    wintypes.LONG, ctypes.c_void_p, wintypes.BOOL, ctypes.c_void_p
+                                )(vtable_vol[14])
+
+                                SetMute_func(pEndpointVol, 1 if muted else 0, None)
+
+                                Release_vol = ctypes.WINFUNCTYPE(wintypes.ULONG, ctypes.c_void_p)(vtable_vol[2])
+                                Release_vol(pEndpointVol)
+
+                            Release_dev = ctypes.WINFUNCTYPE(wintypes.ULONG, ctypes.c_void_p)(vtable_dev[2])
+                            Release_dev(pDevice)
+
+                    Release_coll = ctypes.WINFUNCTYPE(wintypes.ULONG, ctypes.c_void_p)(vtable_coll[2])
+                    Release_coll(pCollection)
+
+                Release_enum = ctypes.WINFUNCTYPE(wintypes.ULONG, ctypes.c_void_p)(vtable_enum[2])
+                Release_enum(pEnumerator)
+        except Exception as e:
+            log(f"Notice: Failed to set Windows mic mute: {e}")
         return
+
+    # Linux (PulseAudio / PipeWire)
     mute_val = "1" if muted else "0"
     for s in get_physical_mic_sources():
         run_audio_cmd(["pactl", "set-source-mute", s, mute_val])
@@ -235,11 +323,13 @@ def setup_pipewire_audio():
         log(f"Warning: Audio setup encountered: {e}")
 
 def cleanup_audio():
-    """Restores the original audio default source and unmutes physical microphones on Linux."""
+    """Restores the original audio default source and unmutes physical microphones."""
+    set_physical_mics_muted(False)
+
     if not sys.platform.startswith("linux"):
         return
+
     global original_default_source, remap_module_id
-    set_physical_mics_muted(False)
 
     if remap_module_id:
         run_audio_cmd(["pactl", "unload-module", remap_module_id])
