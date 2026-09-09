@@ -1525,3 +1525,220 @@ If you do want to externalize this module explicitly add it to
 [2026-09-09 16:10:34] Browser process is active and running normally.
 [2026-09-09 16:11:53] Application shutdown initiated. Cleaning up subprocesses...
 [2026-09-09 16:11:53] Cleanup finished. ScreenShare Host terminated.
+[2026-09-09 16:20:47] =================================================================
+[2026-09-09 16:20:47]  ScreenShare Host Starting
+[2026-09-09 16:20:47]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:20:47]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 16:20:48]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 16:20:48]  Frozen bundle status  : False
+[2026-09-09 16:20:48] =================================================================
+[2026-09-09 16:20:48]  Detected Local IP     : 172.31.54.46
+[2026-09-09 16:20:48]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 16:20:48] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 16:20:49] ========================================
+[2026-09-09 16:20:49] Source files modified or binary missing. Starting compilation...
+[2026-09-09 16:20:49] ========================================
+[2026-09-09 16:20:49] Building React frontend...
+[2026-09-09 16:20:49] Repairing shell-script corruption in e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js...
+[2026-09-09 16:20:49] Successfully repaired e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js to import Vite CLI.
+[2026-09-09 16:20:49] Resolving Windows package links from Deno store...
+[2026-09-09 16:20:49] Invoking Vite CLI directly: e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js
+[2026-09-09 16:20:52] Direct Vite CLI notice: 
+[2026-09-09 16:20:53] Deno task build notice: [0m[32mTask[0m [0m[36mbuild[0m vite build
+
+[2026-09-09 16:20:54] Deno npm:vite notice: 
+[2026-09-09 16:20:54] Notice: Vite did not emit assets, writing resilient fallback client...
+[2026-09-09 16:20:54] Compiling Go binary using: C:\Program Files\Go\bin\go.exe ...
+[2026-09-09 16:20:58] Server binary compilation successful.
+[2026-09-09 16:20:58] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 16:20:58] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:20:59] [Server stdout] [90m2026-09-09T16:20:59+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 16:20:59] [Server stdout] [90m2026-09-09T16:20:59+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 16:20:59] [Server stdout] [90m2026-09-09T16:20:59+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 16:20:59] [Server stdout] [90m2026-09-09T16:20:59+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 16:20:59] [Server stdout] [90m2026-09-09T16:20:59+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 16:20:59] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 16:20:59] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 16:20:59] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 16:20:59] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 16:20:59] =================================================================
+[2026-09-09 16:20:59]  Launching Browser Subprocess
+[2026-09-09 16:20:59]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --enable-usermedia-screen-capturing --auto-select-desktop-capture-source=Entire screen --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 16:20:59]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 16:20:59]  DISPLAY         : <none>
+[2026-09-09 16:20:59]  WAYLAND_DISPLAY : <none>
+[2026-09-09 16:20:59]  XDG_DATA_DIRS   : <none>
+[2026-09-09 16:20:59] =================================================================
+[2026-09-09 16:21:02] Browser process is active and running normally.
+[2026-09-09 16:21:02] [Browser stderr] [3088:16684:0909/162100.868:ERROR:chrome\browser\task_manager\providers\fallback_task_provider.cc:126] Every renderer should have at least one task provided by a primary task provider. If a "Renderer" fallback task is shown, it is a bug. If you have repro steps, please file a new bug and tag it as a dependency of crbug.com/40528867.
+[2026-09-09 16:23:21] Application shutdown initiated. Cleaning up subprocesses...
+[2026-09-09 16:23:21] Cleanup finished. ScreenShare Host terminated.
+[2026-09-09 16:25:23] =================================================================
+[2026-09-09 16:25:23]  ScreenShare Host Starting
+[2026-09-09 16:25:23]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:25:23]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 16:25:23]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 16:25:23]  Frozen bundle status  : False
+[2026-09-09 16:25:23] =================================================================
+[2026-09-09 16:25:24]  Detected Local IP     : 172.31.54.46
+[2026-09-09 16:25:24]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 16:25:24] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 16:25:25] ========================================
+[2026-09-09 16:25:25] Source files modified or binary missing. Starting compilation...
+[2026-09-09 16:25:25] ========================================
+[2026-09-09 16:25:25] Building React frontend...
+[2026-09-09 16:25:25] Repairing shell-script corruption in e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js...
+[2026-09-09 16:25:25] Successfully repaired e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js to import Vite CLI.
+[2026-09-09 16:25:25] Resolving Windows package links from Deno store...
+[2026-09-09 16:25:25] Invoking Vite CLI directly: e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js
+[2026-09-09 16:25:27] Direct Vite CLI notice: 
+[2026-09-09 16:25:39] =================================================================
+[2026-09-09 16:25:39]  ScreenShare Host Starting
+[2026-09-09 16:25:39]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:25:39]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 16:25:39]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 16:25:39]  Frozen bundle status  : False
+[2026-09-09 16:25:39] =================================================================
+[2026-09-09 16:25:40]  Detected Local IP     : 172.31.54.46
+[2026-09-09 16:25:40]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 16:25:40] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 16:25:40] ========================================
+[2026-09-09 16:25:40] Source files modified or binary missing. Starting compilation...
+[2026-09-09 16:25:40] ========================================
+[2026-09-09 16:25:40] Building React frontend...
+[2026-09-09 16:25:40] Repairing shell-script corruption in e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js...
+[2026-09-09 16:25:40] Successfully repaired e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js to import Vite CLI.
+[2026-09-09 16:25:40] Resolving Windows package links from Deno store...
+[2026-09-09 16:25:41] Invoking Vite CLI directly: e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js
+[2026-09-09 16:25:43] Direct Vite CLI notice: 
+[2026-09-09 16:25:45] Deno task build notice: [0m[32mTask[0m [0m[36mbuild[0m vite build
+
+[2026-09-09 16:25:47] Deno npm:vite notice: 
+[2026-09-09 16:25:47] Notice: Vite did not emit assets, writing resilient fallback client...
+[2026-09-09 16:25:47] Compiling Go binary using: C:\Program Files\Go\bin\go.exe ...
+[2026-09-09 16:25:52] Server binary compilation successful.
+[2026-09-09 16:25:52] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 16:25:52] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:25:52] [Server stdout] [90m2026-09-09T16:25:52+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 16:25:52] [Server stdout] [90m2026-09-09T16:25:52+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 16:25:52] [Server stdout] [90m2026-09-09T16:25:52+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 16:25:52] [Server stdout] [90m2026-09-09T16:25:52+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 16:25:52] [Server stdout] [90m2026-09-09T16:25:52+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 16:25:53] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 16:25:53] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 16:25:53] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 16:25:53] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 16:25:53] =================================================================
+[2026-09-09 16:25:53]  Launching Browser Subprocess
+[2026-09-09 16:25:53]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --enable-usermedia-screen-capturing --auto-select-desktop-capture-source=Entire screen --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 16:25:53]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 16:25:53]  DISPLAY         : <none>
+[2026-09-09 16:25:53]  WAYLAND_DISPLAY : <none>
+[2026-09-09 16:25:53]  XDG_DATA_DIRS   : <none>
+[2026-09-09 16:25:53] =================================================================
+[2026-09-09 16:25:57] Browser process is active and running normally.
+[2026-09-09 16:25:57] [Browser stderr] [2868:17548:0909/162555.354:ERROR:chrome\browser\task_manager\providers\fallback_task_provider.cc:126] Every renderer should have at least one task provided by a primary task provider. If a "Renderer" fallback task is shown, it is a bug. If you have repro steps, please file a new bug and tag it as a dependency of crbug.com/40528867.
+[2026-09-09 16:25:57] [Browser stderr] [2868:21812:0909/162555.854:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:26:00] [Browser stderr] [2868:21812:0909/162600.327:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:26:02] [Browser stderr] [2868:21812:0909/162602.150:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:26:03] [Browser stderr] [2868:21812:0909/162603.190:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:26:06] [Browser stderr] [2868:21812:0909/162606.845:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:26:07] [Browser stderr] [2868:21812:0909/162607.841:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:26:13] [Browser stderr] [2868:21812:0909/162613.833:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:26:52] =================================================================
+[2026-09-09 16:26:52]  ScreenShare Host Starting
+[2026-09-09 16:26:52]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:26:52]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 16:26:52]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 16:26:52]  Frozen bundle status  : False
+[2026-09-09 16:26:52] =================================================================
+[2026-09-09 16:26:53]  Detected Local IP     : 172.31.54.46
+[2026-09-09 16:26:53]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 16:26:53] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 16:26:53] ========================================
+[2026-09-09 16:26:53] Source files modified or binary missing. Starting compilation...
+[2026-09-09 16:26:53] ========================================
+[2026-09-09 16:26:53] Building React frontend...
+[2026-09-09 16:26:54] Repairing shell-script corruption in e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js...
+[2026-09-09 16:26:54] Successfully repaired e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js to import Vite CLI.
+[2026-09-09 16:26:54] Resolving Windows package links from Deno store...
+[2026-09-09 16:26:54] Invoking Vite CLI directly: e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js
+[2026-09-09 16:26:58] Direct Vite CLI notice: 
+[2026-09-09 16:26:59] Deno task build notice: [0m[32mTask[0m [0m[36mbuild[0m vite build
+
+[2026-09-09 16:27:01] Deno npm:vite notice: 
+[2026-09-09 16:27:01] Notice: Vite did not emit assets, writing resilient fallback client...
+[2026-09-09 16:27:01] Compiling Go binary using: C:\Program Files\Go\bin\go.exe ...
+[2026-09-09 16:27:06] Server binary compilation successful.
+[2026-09-09 16:27:06] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 16:27:06] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:27:07] [Server stdout] [90m2026-09-09T16:27:07+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 16:27:07] [Server stdout] [90m2026-09-09T16:27:07+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 16:27:07] [Server stdout] [90m2026-09-09T16:27:07+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 16:27:07] [Server stdout] [90m2026-09-09T16:27:07+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 16:27:07] [Server stdout] [90m2026-09-09T16:27:07+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 16:27:07] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 16:27:07] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 16:27:07] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 16:27:07] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 16:27:07] =================================================================
+[2026-09-09 16:27:07]  Launching Browser Subprocess
+[2026-09-09 16:27:07]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --enable-usermedia-screen-capturing --auto-select-desktop-capture-source=Entire screen --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 16:27:07]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 16:27:07]  DISPLAY         : <none>
+[2026-09-09 16:27:07]  WAYLAND_DISPLAY : <none>
+[2026-09-09 16:27:07]  XDG_DATA_DIRS   : <none>
+[2026-09-09 16:27:07] =================================================================
+[2026-09-09 16:27:11] [Browser stderr] [4348:20108:0909/162709.854:ERROR:chrome\browser\task_manager\providers\fallback_task_provider.cc:126] Every renderer should have at least one task provided by a primary task provider. If a "Renderer" fallback task is shown, it is a bug. If you have repro steps, please file a new bug and tag it as a dependency of crbug.com/40528867.
+[2026-09-09 16:27:11] Browser process is active and running normally.
+[2026-09-09 16:27:11] [Browser stderr] [4348:19708:0909/162710.466:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:27:16] [Browser stderr] [4348:19708:0909/162716.104:ERROR:content\browser\bad_message.cc:39] Terminating renderer for bad IPC message, reason 263
+[2026-09-09 16:27:18] Application shutdown initiated. Cleaning up subprocesses...
+[2026-09-09 16:27:18] Cleanup finished. ScreenShare Host terminated.
+[2026-09-09 16:28:31] =================================================================
+[2026-09-09 16:28:31]  ScreenShare Host Starting
+[2026-09-09 16:28:31]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:28:31]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 16:28:31]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 16:28:31]  Frozen bundle status  : False
+[2026-09-09 16:28:31] =================================================================
+[2026-09-09 16:28:32]  Detected Local IP     : 172.31.54.46
+[2026-09-09 16:28:32]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 16:28:32] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 16:28:32] ========================================
+[2026-09-09 16:28:32] Source files modified or binary missing. Starting compilation...
+[2026-09-09 16:28:32] ========================================
+[2026-09-09 16:28:33] Building React frontend...
+[2026-09-09 16:28:33] Repairing shell-script corruption in e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js...
+[2026-09-09 16:28:33] Successfully repaired e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js to import Vite CLI.
+[2026-09-09 16:28:33] Resolving Windows package links from Deno store...
+[2026-09-09 16:28:33] Invoking Vite CLI directly: e:\2027\ComputerScripts\ScreenShare\ui\node_modules\vite\bin\vite.js
+[2026-09-09 16:28:35] Direct Vite CLI notice: 
+[2026-09-09 16:28:37] Deno task build notice: [0m[32mTask[0m [0m[36mbuild[0m vite build
+
+[2026-09-09 16:28:39] Deno npm:vite notice: 
+[2026-09-09 16:28:39] Notice: Vite did not emit assets, writing resilient fallback client...
+[2026-09-09 16:28:39] Compiling Go binary using: C:\Program Files\Go\bin\go.exe ...
+[2026-09-09 16:28:43] Server binary compilation successful.
+[2026-09-09 16:28:43] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 16:28:43] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:28:43] [Server stdout] [90m2026-09-09T16:28:43+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 16:28:43] [Server stdout] [90m2026-09-09T16:28:43+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 16:28:43] [Server stdout] [90m2026-09-09T16:28:43+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 16:28:43] [Server stdout] [90m2026-09-09T16:28:43+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 16:28:43] [Server stdout] [90m2026-09-09T16:28:43+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 16:28:44] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 16:28:44] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 16:28:44] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 16:28:44] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 16:28:44] =================================================================
+[2026-09-09 16:28:44]  Launching Browser Subprocess
+[2026-09-09 16:28:44]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --enable-usermedia-screen-capturing --auto-select-desktop-capture-source=Entire screen --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 16:28:44]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 16:28:44]  DISPLAY         : <none>
+[2026-09-09 16:28:44]  WAYLAND_DISPLAY : <none>
+[2026-09-09 16:28:44]  XDG_DATA_DIRS   : <none>
+[2026-09-09 16:28:44] =================================================================
+[2026-09-09 16:28:48] [Browser stderr] [23580:22332:0909/162846.209:ERROR:chrome\browser\task_manager\providers\fallback_task_provider.cc:126] Every renderer should have at least one task provided by a primary task provider. If a "Renderer" fallback task is shown, it is a bug. If you have repro steps, please file a new bug and tag it as a dependency of crbug.com/40528867.
+[2026-09-09 16:30:03] Application shutdown initiated. Cleaning up subprocesses...
+[2026-09-09 16:30:03] Cleanup finished. ScreenShare Host terminated.

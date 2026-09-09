@@ -158,7 +158,16 @@ export const Room = ({
 
     const enableAudio = () => {
         if (videoElement) {
+            videoElement.pause();
             videoElement.muted = false;
+            videoElement.playsInline = true;
+            
+            // Safari workaround: re-attach the stream
+            if (stream && videoElement.srcObject === stream) {
+                videoElement.srcObject = null;
+                videoElement.srcObject = stream;
+            }
+
             videoElement
                 .play()
                 .then(() => setAudioBlocked(false))
@@ -300,10 +309,11 @@ export const Room = ({
                         gap: '10px',
                     }}
                     onClick={enableAudio}
+                    onTouchStart={enableAudio}
                 >
                     <VolumeIcon />
                     <Typography variant="body1" style={{fontWeight: 'bold', color: '#282828'}}>
-                        Tap here to enable sound
+                        Tap to enable sound (turn off Silent Mode)
                     </Typography>
                 </Paper>
             )}
