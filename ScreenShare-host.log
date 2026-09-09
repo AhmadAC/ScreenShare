@@ -1066,3 +1066,36 @@ If you do want to externalize this module explicitly add it to
 [2026-09-09 14:51:28] Browser process is active and running normally.
 [2026-09-09 14:53:43] Application shutdown initiated. Cleaning up subprocesses...
 [2026-09-09 14:53:43] Cleanup finished. ScreenShare Host terminated.
+[2026-09-09 14:58:01] =================================================================
+[2026-09-09 14:58:01]  ScreenShare Host Starting
+[2026-09-09 14:58:01]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 14:58:01]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 14:58:01]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 14:58:01]  Frozen bundle status  : False
+[2026-09-09 14:58:01] =================================================================
+[2026-09-09 14:58:02]  Detected Local IP     : 172.31.54.46
+[2026-09-09 14:58:02]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 14:58:02] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 14:58:02] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 14:58:02] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 14:58:02] [Server stdout] [90m2026-09-09T14:58:02+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 14:58:02] [Server stdout] [90m2026-09-09T14:58:02+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 14:58:02] [Server stdout] [90m2026-09-09T14:58:02+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 14:58:02] [Server stdout] [90m2026-09-09T14:58:02+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 14:58:02] [Server stdout] [90m2026-09-09T14:58:02+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 14:58:03] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 14:58:03] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 14:58:03] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 14:58:03] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 14:58:03] =================================================================
+[2026-09-09 14:58:03]  Launching Browser Subprocess
+[2026-09-09 14:58:03]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --auto-select-desktop-capture-source=Entire screen --auto-accept-camera-and-microphone-capture --allow-http-screen-capture --enable-usermedia-screen-capturing --autoplay-policy=no-user-gesture-required --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 14:58:03]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 14:58:03]  DISPLAY         : <none>
+[2026-09-09 14:58:03]  WAYLAND_DISPLAY : <none>
+[2026-09-09 14:58:03]  XDG_DATA_DIRS   : <none>
+[2026-09-09 14:58:03] =================================================================
+[2026-09-09 14:58:06] [Browser stderr] [272:12148:0909/145805.054:ERROR:chrome\browser\task_manager\providers\fallback_task_provider.cc:126] Every renderer should have at least one task provided by a primary task provider. If a "Renderer" fallback task is shown, it is a bug. If you have repro steps, please file a new bug and tag it as a dependency of crbug.com/40528867.
+[2026-09-09 14:58:06] Browser process is active and running normally.
+[2026-09-09 14:58:52] Application shutdown initiated. Cleaning up subprocesses...
+[2026-09-09 14:58:52] Cleanup finished. ScreenShare Host terminated.
