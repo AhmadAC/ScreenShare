@@ -109,6 +109,7 @@ def launch_hidden_browser(url):
             f"--app={url}",
             f"--user-data-dir={isolated_profile_dir}",
             "--enable-usermedia-screen-capturing",
+            "--auto-select-desktop-capture-source=Entire screen",
             "--autoplay-policy=no-user-gesture-required",
             "--no-first-run",
             "--no-default-browser-check",

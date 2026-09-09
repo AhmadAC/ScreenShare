@@ -209,24 +209,444 @@ def fix_broken_vite_shims(ui_dir):
             pass
 
 def write_failsafe_client(ui_dir):
-    """Generates a resilient fallback application inside ui/build if bundlers fail."""
+    """Generates a resilient fallback application inside ui/build with full WebRTC signaling and ICE candidate support."""
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_assets_dir = os.path.join(ui_build_dir, "assets")
     os.makedirs(ui_assets_dir, exist_ok=True)
 
     index_html = os.path.join(ui_build_dir, "index.html")
     with open(index_html, "w", encoding="utf-8") as f:
-        f.write('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><title>ScreenShare</title><meta name="viewport" content="width=device-width, initial-scale=1" /><style>body { background-color: #282828; color: #fbf1c7; font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; } #container { text-align: center; max-width: 600px; padding: 30px; background: #32302f; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); } h1 { color: #fabd2f; margin-bottom: 10px; } p { color: #a89984; line-height: 1.5; } video { width: 100%; border-radius: 8px; margin-top: 15px; background: #1d2021; } .status { margin-top: 15px; font-weight: bold; color: #8ec07c; }</style></head><body><div id="container"><h1>ScreenShare Live Session</h1><p id="msg">Connecting to live screen broadcast...</p><div class="status" id="status">Standby</div><video id="remoteVideo" autoplay playsinline></video></div><script src="./assets/client.js"></script></body></html>')
+        f.write('''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ScreenShare</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html {
+      width: 100%;
+      height: 100%;
+      background-color: #1d2021;
+      color: #fbf1c7;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    #header {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .badge {
+      background: rgba(40, 40, 40, 0.85);
+      border: 1px solid #504945;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #fabd2f;
+      backdrop-filter: blur(8px);
+      pointer-events: auto;
+    }
+    #status {
+      color: #8ec07c;
+    }
+    #videoContainer {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+    #overlayMessage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
+      background: rgba(40, 40, 40, 0.9);
+      padding: 24px 32px;
+      border-radius: 16px;
+      border: 1px solid #fabd2f;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+      max-width: 90%;
+    }
+    #overlayMessage h2 {
+      color: #fabd2f;
+      margin-bottom: 8px;
+      font-size: 20px;
+    }
+    #overlayMessage p {
+      color: #a89984;
+      font-size: 14px;
+    }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 25;
+      background: rgba(40, 40, 40, 0.85);
+      border: 1px solid #504945;
+      padding: 8px 16px;
+      border-radius: 30px;
+      backdrop-filter: blur(8px);
+    }
+    button {
+      background: #3c3836;
+      border: none;
+      color: #fbf1c7;
+      padding: 8px 14px;
+      border-radius: 16px;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #504945;
+    }
+    button:active {
+      background: #665c54;
+    }
+    .btn-primary {
+      background: #fabd2f;
+      color: #282828;
+    }
+    .btn-primary:hover {
+      background: #d79921;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <div class="badge">Room: <span id="roomLabel">-</span></div>
+    <div class="badge" id="status">Connecting...</div>
+  </div>
+
+  <div id="videoContainer">
+    <div id="overlayMessage">
+      <h2>ScreenShare Stream</h2>
+      <p id="msgDetail">Waiting for screen broadcaster to start transmission...</p>
+    </div>
+    <video id="remoteVideo" autoplay playsinline></video>
+  </div>
+
+  <div id="controls">
+    <button id="btnUnmute" style="display: none;">🔊 Unmute Audio</button>
+    <button id="btnFullscreen">⛶ Fullscreen</button>
+  </div>
+
+  <script src="./assets/client.js"></script>
+</body>
+</html>''')
 
     client_js = os.path.join(ui_assets_dir, "client.js")
     with open(client_js, "w", encoding="utf-8") as f:
-        f.write('''
-(function(){const params=new URLSearchParams(window.location.search);const roomId=params.get('room')||'a';const isCreate=params.get('create')==='true';const statusEl=document.getElementById('status');const msgEl=document.getElementById('msg');const videoEl=document.getElementById('remoteVideo');let ws;let activeStream=null;const peerConnections={};function connectSignaling(){const proto=window.location.protocol==='https:'?'wss:':'ws:';ws=new WebSocket(`${proto}//${window.location.host}/stream`);ws.onopen=()=>{statusEl.innerText="Connected to room: "+roomId;if(isCreate){ws.send(JSON.stringify({type:"create",payload:{id:roomId,mode:"stun",joinIfExist:true,closeOnOwnerLeave:false,username:"Host"}}));}else{ws.send(JSON.stringify({type:"join",payload:{id:roomId,username:"Viewer"}}));}};ws.onmessage=async(ev)=>{const msg=JSON.parse(ev.data);if(msg.type==="hostsession"&&activeStream){const pc=new RTCPeerConnection({iceServers:msg.payload.iceServers});peerConnections[msg.payload.id]=pc;activeStream.getTracks().forEach(t=>pc.addTrack(t,activeStream));pc.onicecandidate=(e)=>{if(e.candidate){ws.send(JSON.stringify({type:"hostice",payload:{sid:msg.payload.id,value:e.candidate}}));}};const offer=await pc.createOffer({offerToReceiveVideo:true});await pc.setLocalDescription(offer);ws.send(JSON.stringify({type:"hostoffer",payload:{sid:msg.payload.id,value:offer}}));}else if(msg.type==="clientanswer"){const pc=peerConnections[msg.payload.sid];if(pc)await pc.setRemoteDescription(msg.payload.value);}else if(msg.type==="clientsession"){const pc=new RTCPeerConnection({iceServers:msg.payload.iceServers});peerConnections[msg.payload.id]=pc;pc.ontrack=(e)=>{if(videoEl){videoEl.srcObject=e.streams[0]||new MediaStream([e.track]);videoEl.play().catch(()=>{});msgEl.innerText="Broadcasting active screen";}};pc.onicecandidate=(e)=>{if(e.candidate){ws.send(JSON.stringify({type:"clientice",payload:{sid:msg.payload.id,value:e.candidate}}));}};}else if(msg.type==="hostoffer"){const pc=peerConnections[msg.payload.sid];if(pc){await pc.setRemoteDescription(msg.payload.value);const ans=await pc.createAnswer();await pc.setLocalDescription(ans);ws.send(JSON.stringify({type:"clientanswer",payload:{sid:msg.payload.sid,value:ans}}));}}};ws.onclose=()=>{statusEl.innerText="Connection lost. Reconnecting...";setTimeout(connectSignaling,2000);};}
-async function startShare(){try{activeStream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:60}},audio:false});statusEl.innerText="Screen capture started";ws.send(JSON.stringify({type:"share",payload:{}}));reportState({sharing:true});}catch(err){reportState({sharing:false});}}
-function stopShare(){if(activeStream){activeStream.getTracks().forEach(t=>t.stop());activeStream=null;}ws.send(JSON.stringify({type:"stopshare",payload:{}}));reportState({sharing:false});}
-function reportState(state){fetch('http://127.0.0.1:5055/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}).catch(()=>{});}
-setInterval(()=>{fetch('http://127.0.0.1:5055/poll?t='+Date.now()).then(r=>r.json()).then(d=>{if(d.action==="start_share")startShare();else if(d.action==="stop_share")stopShare();}).catch(()=>{});},300);connectSignaling();})();
-''')
+        f.write('''(function() {
+  const params = new URLSearchParams(window.location.search);
+  const roomId = params.get('room') || 'a';
+  const isCreate = params.get('create') === 'true';
+
+  const statusEl = document.getElementById('status');
+  const roomLabel = document.getElementById('roomLabel');
+  const msgDetail = document.getElementById('msgDetail');
+  const overlayMessage = document.getElementById('overlayMessage');
+  const videoEl = document.getElementById('remoteVideo');
+  const btnUnmute = document.getElementById('btnUnmute');
+  const btnFullscreen = document.getElementById('btnFullscreen');
+
+  roomLabel.innerText = roomId;
+
+  let ws = null;
+  let activeStream = null;
+  const peerConnections = {};
+  const pendingIceCandidates = {};
+
+  btnFullscreen.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      if (videoEl.requestFullscreen) videoEl.requestFullscreen();
+      else if (videoEl.webkitRequestFullscreen) videoEl.webkitRequestFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(() => {});
+      }
+    } else {
+      if (document.exitFullscreen) document.exitFullscreen();
+    }
+  });
+
+  btnUnmute.addEventListener('click', () => {
+    videoEl.muted = false;
+    videoEl.play().catch(() => {});
+    btnUnmute.style.display = 'none';
+  });
+
+  function getCleanIceServers(iceServers) {
+    if (!iceServers || !Array.isArray(iceServers)) return [];
+    return iceServers.map(server => {
+      const cfg = { urls: server.urls };
+      if (server.username) cfg.username = server.username;
+      if (server.credential) cfg.credential = server.credential;
+      return cfg;
+    });
+  }
+
+  function connectSignaling() {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${proto}//${window.location.host}/stream`);
+
+    ws.onopen = () => {
+      statusEl.innerText = "Connected";
+      statusEl.style.color = "#8ec07c";
+
+      if (isCreate) {
+        ws.send(JSON.stringify({
+          type: "create",
+          payload: {
+            id: roomId,
+            mode: "stun",
+            joinIfExist: true,
+            closeOnOwnerLeave: false,
+            username: "Host"
+          }
+        }));
+        // Auto-initiate display capture on Host side
+        setTimeout(() => {
+          if (!activeStream) startShare();
+        }, 300);
+      } else {
+        ws.send(JSON.stringify({
+          type: "join",
+          payload: {
+            id: roomId,
+            username: "Viewer"
+          }
+        }));
+      }
+    };
+
+    ws.onmessage = async (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+
+        if (msg.type === "hostsession") {
+          const sid = msg.payload.id;
+          const pc = new RTCPeerConnection({ iceServers: getCleanIceServers(msg.payload.iceServers) });
+          peerConnections[sid] = pc;
+          pendingIceCandidates[sid] = [];
+
+          if (activeStream) {
+            activeStream.getTracks().forEach(t => pc.addTrack(t, activeStream));
+          }
+
+          pc.onicecandidate = (e) => {
+            if (e.candidate) {
+              ws.send(JSON.stringify({
+                type: "hostice",
+                payload: { sid: sid, value: e.candidate }
+              }));
+            }
+          };
+
+          const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+          await pc.setLocalDescription(offer);
+          ws.send(JSON.stringify({
+            type: "hostoffer",
+            payload: { sid: sid, value: offer }
+          }));
+
+        } else if (msg.type === "clientsession") {
+          const sid = msg.payload.id;
+          const pc = new RTCPeerConnection({ iceServers: getCleanIceServers(msg.payload.iceServers) });
+          peerConnections[sid] = pc;
+          pendingIceCandidates[sid] = [];
+
+          pc.ontrack = (e) => {
+            if (videoEl) {
+              const stream = e.streams[0] || new MediaStream([e.track]);
+              videoEl.srcObject = stream;
+              videoEl.play().then(() => {
+                overlayMessage.style.display = 'none';
+                statusEl.innerText = "Live Broadcast";
+              }).catch(() => {
+                videoEl.muted = true;
+                videoEl.play().catch(() => {});
+                btnUnmute.style.display = 'block';
+                overlayMessage.style.display = 'none';
+                statusEl.innerText = "Live Broadcast (Muted)";
+              });
+            }
+          };
+
+          pc.onicecandidate = (e) => {
+            if (e.candidate) {
+              ws.send(JSON.stringify({
+                type: "clientice",
+                payload: { sid: sid, value: e.candidate }
+              }));
+            }
+          };
+
+        } else if (msg.type === "hostoffer") {
+          const sid = msg.payload.sid;
+          const pc = peerConnections[sid];
+          if (pc) {
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.payload.value));
+            
+            // Process any early buffered host ICE candidates
+            if (pendingIceCandidates[sid]) {
+              for (const cand of pendingIceCandidates[sid]) {
+                await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+              }
+              pendingIceCandidates[sid] = [];
+            }
+
+            const ans = await pc.createAnswer();
+            await pc.setLocalDescription(ans);
+            ws.send(JSON.stringify({
+              type: "clientanswer",
+              payload: { sid: sid, value: ans }
+            }));
+          }
+
+        } else if (msg.type === "clientanswer") {
+          const sid = msg.payload.sid;
+          const pc = peerConnections[sid];
+          if (pc) {
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.payload.value));
+            
+            // Process any early buffered client ICE candidates
+            if (pendingIceCandidates[sid]) {
+              for (const cand of pendingIceCandidates[sid]) {
+                await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+              }
+              pendingIceCandidates[sid] = [];
+            }
+          }
+
+        } else if (msg.type === "hostice") {
+          const sid = msg.payload.sid;
+          const pc = peerConnections[sid];
+          const cand = msg.payload.value;
+          if (cand) {
+            if (pc && pc.remoteDescription) {
+              pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+            } else {
+              if (!pendingIceCandidates[sid]) pendingIceCandidates[sid] = [];
+              pendingIceCandidates[sid].push(cand);
+            }
+          }
+
+        } else if (msg.type === "clientice") {
+          const sid = msg.payload.sid;
+          const pc = peerConnections[sid];
+          const cand = msg.payload.value;
+          if (cand) {
+            if (pc && pc.remoteDescription) {
+              pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+            } else {
+              if (!pendingIceCandidates[sid]) pendingIceCandidates[sid] = [];
+              pendingIceCandidates[sid].push(cand);
+            }
+          }
+
+        } else if (msg.type === "endshare" || msg.type === "stopshare") {
+          const sid = msg.payload;
+          if (peerConnections[sid]) {
+            peerConnections[sid].close();
+            delete peerConnections[sid];
+          }
+          if (Object.keys(peerConnections).length === 0 && !isCreate) {
+            overlayMessage.style.display = 'block';
+            msgDetail.innerText = "Screen broadcast ended by host.";
+            statusEl.innerText = "Stream Ended";
+          }
+        }
+      } catch (err) {
+        console.warn("Signaling message handling error:", err);
+      }
+    };
+
+    ws.onclose = () => {
+      statusEl.innerText = "Reconnecting...";
+      statusEl.style.color = "#cc241d";
+      setTimeout(connectSignaling, 2000);
+    };
+  }
+
+  async function startShare() {
+    try {
+      activeStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 60, max: 60 } },
+        audio: false
+      });
+      statusEl.innerText = "Broadcasting Active";
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "share", payload: {} }));
+      }
+      reportState({ sharing: true });
+      activeStream.getVideoTracks()[0].addEventListener('ended', () => stopShare());
+    } catch (err) {
+      reportState({ sharing: false });
+    }
+  }
+
+  function stopShare() {
+    if (activeStream) {
+      activeStream.getTracks().forEach(t => t.stop());
+      activeStream = null;
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "stopshare", payload: {} }));
+    }
+    reportState({ sharing: false });
+  }
+
+  function reportState(state) {
+    fetch('http://127.0.0.1:5055/state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state)
+    }).catch(() => {});
+  }
+
+  if (isCreate) {
+    setInterval(() => {
+      fetch('http://127.0.0.1:5055/poll?t=' + Date.now())
+        .then(r => r.json())
+        .then(d => {
+          if (d.action === "start_share") startShare();
+          else if (d.action === "stop_share") stopShare();
+        })
+        .catch(() => {});
+    }, 300);
+  }
+
+  connectSignaling();
+})();''')
 
 def build_frontend_ui(src_dir, deno_cmd, pbar=None):
     """Builds the React frontend and guarantees ui/build contains real React assets for Go embed."""
