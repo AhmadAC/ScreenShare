@@ -3,7 +3,7 @@
 import os
 
 def write_failsafe_client(ui_dir):
-    """Generates a resilient fallback application inside ui/build with mobile audio context unlocking, pause support, and WebRTC streaming."""
+    """Generates a resilient fallback application inside ui/build with dual Web Audio routing, Windows loopback capture, and mobile audio unlock."""
     ui_build_dir = os.path.join(ui_dir, "build")
     ui_assets_dir = os.path.join(ui_build_dir, "assets")
     os.makedirs(ui_assets_dir, exist_ok=True)
@@ -178,7 +178,7 @@ def write_failsafe_client(ui_dir):
   </div>
 
   <div id="audioBanner">
-    🔊 Tap anywhere to hear sound (turn off Silent Mode)
+    🔊 Tap anywhere to enable sound (turn off Silent Mode)
   </div>
 
   <div id="videoContainer">
@@ -232,6 +232,10 @@ def write_failsafe_client(ui_dir):
   let hiddenHostVideo = null;
   let remoteStream = new MediaStream();
   let audioContextUnlocked = false;
+  let audioCtx = null;
+  let audioSourceNode = null;
+  let dedicatedAudioEl = null;
+
   const peerConnections = {};
   const pendingIceCandidates = {};
 
@@ -256,17 +260,38 @@ def write_failsafe_client(ui_dir):
     }
   });
 
-  function unlockAudioEngine() {
-    if (audioContextUnlocked || isCreate) return;
+  function setupRemoteAudioPipelines() {
+    if (isCreate) return;
+
+    if (!dedicatedAudioEl) {
+      dedicatedAudioEl = document.createElement('audio');
+      dedicatedAudioEl.autoplay = true;
+      dedicatedAudioEl.playsInline = true;
+      dedicatedAudioEl.style.display = 'none';
+      document.body.appendChild(dedicatedAudioEl);
+    }
+    dedicatedAudioEl.srcObject = remoteStream;
+
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        if (!window.__ssAudioContext) {
-          window.__ssAudioContext = new AudioCtx();
-        }
-        if (window.__ssAudioContext.state === 'suspended') {
-          window.__ssAudioContext.resume();
-        }
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtxClass && !audioCtx) {
+        audioCtx = new AudioCtxClass();
+      }
+      if (audioCtx && !audioSourceNode && remoteStream.getAudioTracks().length > 0) {
+        audioSourceNode = audioCtx.createMediaStreamSource(remoteStream);
+        audioSourceNode.connect(audioCtx.destination);
+      }
+    } catch (e) {
+      console.warn("Web Audio setup notice:", e);
+    }
+  }
+
+  function unlockAudioEngine() {
+    if (isCreate) return;
+    try {
+      setupRemoteAudioPipelines();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
       }
       audioContextUnlocked = true;
     } catch (_) {}
@@ -285,17 +310,18 @@ def write_failsafe_client(ui_dir):
     videoEl.playsInline = true;
     videoEl.volume = 1.0;
 
-    const playPromise = videoEl.play();
-    if (playPromise !== undefined) {
-      playPromise.then(() => {
-        btnToggleAudio.innerText = "🔊 Sound: Playing";
-        btnToggleAudio.style.background = "#fabd2f";
-        btnToggleAudio.style.color = "#282828";
-        statusEl.innerText = "Live Broadcast (Sound Active)";
-      }).catch((err) => {
-        console.warn("Playback resume error:", err);
-      });
+    if (dedicatedAudioEl) {
+      dedicatedAudioEl.muted = false;
+      dedicatedAudioEl.volume = 1.0;
+      dedicatedAudioEl.play().catch(() => {});
     }
+
+    videoEl.play().then(() => {
+      btnToggleAudio.innerText = "🔊 Sound: Playing";
+      btnToggleAudio.style.background = "#fabd2f";
+      btnToggleAudio.style.color = "#282828";
+      statusEl.innerText = "Live Broadcast (Sound Active)";
+    }).catch(() => {});
   }
 
   function toggleAudio(e) {
@@ -306,6 +332,7 @@ def write_failsafe_client(ui_dir):
       unmutePlayback();
     } else {
       videoEl.muted = true;
+      if (dedicatedAudioEl) dedicatedAudioEl.muted = true;
       btnToggleAudio.innerText = "🔇 Sound: Muted";
       btnToggleAudio.style.background = "#3c3836";
       btnToggleAudio.style.color = "#fbf1c7";
@@ -318,6 +345,8 @@ def write_failsafe_client(ui_dir):
   audioBanner.addEventListener('touchstart', unmutePlayback, { passive: true });
   videoContainer.addEventListener('click', unmutePlayback);
   videoContainer.addEventListener('touchstart', unmutePlayback, { passive: true });
+  window.addEventListener('click', unlockAudioEngine, { once: true });
+  window.addEventListener('touchstart', unlockAudioEngine, { once: true });
 
   btnStartCapture.addEventListener('click', () => {
     startShare();
@@ -372,7 +401,7 @@ def write_failsafe_client(ui_dir):
         }));
 
         msgTitle.innerText = "Host Broadcaster Mode";
-        msgDetail.innerText = "Click below to start broadcasting screen & computer sound:";
+        msgDetail.innerText = "Broadcasting desktop video and audio in real-time:";
         btnStartCapture.style.display = "block";
 
         startShare();
@@ -428,11 +457,11 @@ def write_failsafe_client(ui_dir):
           pc.ontrack = (e) => {
             if (e.streams && e.streams[0]) {
               remoteStream = e.streams[0];
-              videoEl.srcObject = remoteStream;
             } else {
               remoteStream.addTrack(e.track);
-              videoEl.srcObject = remoteStream;
             }
+            videoEl.srcObject = remoteStream;
+            setupRemoteAudioPipelines();
 
             videoEl.muted = false;
             videoEl.playsInline = true;
@@ -560,11 +589,7 @@ def write_failsafe_client(ui_dir):
             displaySurface: "monitor",
             frameRate: { ideal: 60, max: 60 }
           },
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false
-          },
+          audio: true,
           systemAudio: "include",
           selfBrowserSurface: "exclude",
           surfaceSwitching: "include",
@@ -573,13 +598,18 @@ def write_failsafe_client(ui_dir):
       } catch (e1) {
         try {
           screenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { frameRate: { ideal: 60, max: 60 } },
-            audio: true
+            video: true,
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            },
+            systemAudio: "include"
           });
         } catch (e2) {
           screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
-            audio: false
+            audio: true
           });
         }
       }
@@ -595,8 +625,28 @@ def write_failsafe_client(ui_dir):
         });
       } else {
         try {
+          let audioDevices = [];
+          try { audioDevices = await navigator.mediaDevices.enumerateDevices(); } catch (_) {}
+
+          const loopback = audioDevices.find(d => 
+            d.kind === 'audioinput' && (
+              d.label.toLowerCase().includes('stereo mix') ||
+              d.label.toLowerCase().includes('what u hear') ||
+              d.label.toLowerCase().includes('cable output') ||
+              d.label.toLowerCase().includes('virtual') ||
+              d.label.toLowerCase().includes('computer sound') ||
+              d.label.toLowerCase().includes('monitor') ||
+              d.label.toLowerCase().includes('mix')
+            )
+          );
+
           const audioStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
+            audio: loopback ? {
+              deviceId: { exact: loopback.deviceId },
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            } : {
               echoCancellation: false,
               noiseSuppression: false,
               autoGainControl: false
@@ -610,7 +660,7 @@ def write_failsafe_client(ui_dir):
             });
           }
         } catch (audioFallbackErr) {
-          console.warn("Audio fallback capture notice:", audioFallbackErr);
+          console.warn("Audio loopback capture notice:", audioFallbackErr);
         }
       }
 

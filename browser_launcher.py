@@ -114,6 +114,7 @@ def launch_hidden_browser(url):
             "--enable-usermedia-screen-capturing",
             "--auto-select-desktop-capture-source=Entire screen",
             "--autoplay-policy=no-user-gesture-required",
+            "--enable-features=WebRTCPipeWireCapturer,WasapiRawAudioCapture",
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-background-networking",

@@ -1857,3 +1857,42 @@ If you do want to externalize this module explicitly add it to
 [2026-09-09 16:41:14] Browser process is active and running normally.
 [2026-09-09 16:41:50] Application shutdown initiated. Cleaning up subprocesses...
 [2026-09-09 16:41:51] Cleanup finished. ScreenShare Host terminated.
+[2026-09-09 16:43:19] =================================================================
+[2026-09-09 16:43:19]  ScreenShare Host Starting
+[2026-09-09 16:43:19]  Execution Working Dir : E:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:43:19]  Log File Location     : E:\2027\ComputerScripts\ScreenShare\ScreenShare-host.log
+[2026-09-09 16:43:19]  Python sys.executable : C:\Users\STEAM\AppData\Local\Python\pythoncore-3.14-64\python.exe
+[2026-09-09 16:43:19]  Frozen bundle status  : False
+[2026-09-09 16:43:19] =================================================================
+[2026-09-09 16:43:19]  Detected Local IP     : 172.31.54.46
+[2026-09-09 16:43:19]  Viewers URL           : http://172.31.54.46:5050
+[2026-09-09 16:43:19] Viewer link written to: E:\2027\ComputerScripts\ScreenShare\link.txt
+[2026-09-09 16:43:19] ========================================
+[2026-09-09 16:43:19] Source files modified or binary missing. Starting compilation...
+[2026-09-09 16:43:19] ========================================
+[2026-09-09 16:43:19] Building React frontend...
+[2026-09-09 16:43:23] Frontend UI built successfully with Deno Vite CLI.
+[2026-09-09 16:43:23] Compiling Go binary using: C:\Program Files\Go\bin\go.exe ...
+[2026-09-09 16:43:29] Server binary compilation successful.
+[2026-09-09 16:43:29] Using server binary: e:\2027\ComputerScripts\ScreenShare\ScreenShare.exe
+[2026-09-09 16:43:29] Working Directory  : e:\2027\ComputerScripts\ScreenShare
+[2026-09-09 16:43:30] [Server stdout] [90m2026-09-09T16:43:30+08:00[0m [32mINF[0m [1mScreenShare_SECRET unset, user logins will be invalidated on restart[0m
+[2026-09-09 16:43:30] [Server stdout] [90m2026-09-09T16:43:30+08:00[0m [32mINF[0m [1mDeny turn peers within ["0.0.0.0/8" "127.0.0.0/8" "::/128" "::1/128" "fe80::/10"][0m
+[2026-09-09 16:43:30] [Server stdout] [90m2026-09-09T16:43:30+08:00[0m [32mINF[0m [1mLoaded Users[0m [36mamount=[0m1
+[2026-09-09 16:43:30] [Server stdout] [90m2026-09-09T16:43:30+08:00[0m [32mINF[0m [1mStart TURN/STUN[0m [36maddr=[0m0.0.0.0:3478
+[2026-09-09 16:43:30] [Server stdout] [90m2026-09-09T16:43:30+08:00[0m [32mINF[0m [1mStart HTTP[0m [36maddr=[0m0.0.0.0:5050
+[2026-09-09 16:43:30] Backend server is up and responsive at http://127.0.0.1:5050/health
+[2026-09-09 16:43:30] Local control bridge HTTP server listening on 127.0.0.1:5055
+[2026-09-09 16:43:30] Audio sync thread started (mirroring sink volume to Computer Sound)
+[2026-09-09 16:43:30] Found Windows browser: 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+[2026-09-09 16:43:30] =================================================================
+[2026-09-09 16:43:30]  Launching Browser Subprocess
+[2026-09-09 16:43:30]  Command         : C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe --app=http://127.0.0.1:5050/?room=a&create=true --user-data-dir=C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile --allow-http-screen-capture --enable-usermedia-screen-capturing --auto-select-desktop-capture-source=Entire screen --autoplay-policy=no-user-gesture-required --enable-features=WebRTCPipeWireCapturer,WasapiRawAudioCapture --no-first-run --no-default-browser-check --disable-background-networking --disable-sync --disable-breakpad --disable-component-update --window-size=1280,720
+[2026-09-09 16:43:30]  Profile Dir     : C:\Users\STEAM\AppData\Local\Temp\ScreenShare_browser_profile
+[2026-09-09 16:43:30]  DISPLAY         : <none>
+[2026-09-09 16:43:30]  WAYLAND_DISPLAY : <none>
+[2026-09-09 16:43:30]  XDG_DATA_DIRS   : <none>
+[2026-09-09 16:43:30] =================================================================
+[2026-09-09 16:43:36] Browser process is active and running normally.
+[2026-09-09 16:43:55] Application shutdown initiated. Cleaning up subprocesses...
+[2026-09-09 16:43:55] Cleanup finished. ScreenShare Host terminated.
